@@ -17,7 +17,7 @@
                         <Font name="System Bold" size="20.0" />
                     </font>
                 </Button>
-                <Button fx:id="playButton" styleClass="button-play" text="Jugar">
+                <Button fx:id="playButton" onAction="#onPlay" styleClass="button-play" text="Jugar">
                     <font>
                         <Font name="System Bold" size="20.0" />
                     </font>

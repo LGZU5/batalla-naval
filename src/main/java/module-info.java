@@ -1,6 +1,7 @@
 module proyect.batallanaval {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.graphics;
 
 
     opens proyect.batallanaval to javafx.fxml;
