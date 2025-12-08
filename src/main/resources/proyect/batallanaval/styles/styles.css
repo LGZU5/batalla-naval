@@ -1,0 +1,151 @@
+/* ==============================
+   🎨 FONDO PRINCIPAL (Battlefield)
+   ============================== */
+.bg-home {
+    -fx-background-color: linear-gradient(to bottom, #0A1A2F, #1F3A56, #3A5F7A);
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+}
+
+/* ==============================
+   🧾 TEXTOS (Estilo Militar)
+   ============================== */
+.label {
+    -fx-font-family: "DejaVu Sans Mono", "Monospace";
+    -fx-font-size: 14px;
+    -fx-text-fill: #A9C4E2;
+}
+
+.title {
+    -fx-font-family: "Ubuntu", "DejaVu Sans", "Liberation Sans";
+    -fx-font-size: 42px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #F2F6FC;
+}
+
+.subtitle {
+    -fx-font-family: "DejaVu Sans", "Ubuntu";
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #C9D6E8;
+}
+
+/* ==============================
+   🎯 BOTONES (Estilo Battlefield)
+   ============================== */
+
+/* 🔵 BOTÓN PLAY (Azul acero naval) */
+.button-play {
+    -fx-background-color: #1F3A56;
+    -fx-text-fill: #E2EAF7;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 12 30;
+    -fx-border-color: #0D2238;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0.4, 0, 3);
+    -fx-cursor: hand;
+}
+
+.button-play:hover {
+    -fx-background-color: linear-gradient(to bottom, #2E4A6E, #162A42);
+    -fx-translate-y: -2;
+}
+
+.button-play:pressed {
+    -fx-background-color: #0D2238;
+    -fx-translate-y: 0;
+}
+
+/* 🟧 BOTÓN OPTIONS (Camuflaje arena) */
+.button-options {
+    -fx-background-color: #8C7A3E;
+    -fx-text-fill: #F2F2F2;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 12 30;
+    -fx-border-color: #5C4E2A;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0.4, 0, 3);
+    -fx-cursor: hand;
+}
+
+.button-options:hover {
+    -fx-background-color: linear-gradient(to bottom, #A08F56, #6E5E2E);
+    -fx-translate-y: -2;
+}
+
+.button-options:pressed {
+    -fx-background-color: #4A3E1F;
+    -fx-translate-y: 0;
+}
+
+/* 🔴 BOTÓN QUIT (Rojo alerta militar) */
+.button-quit {
+    -fx-background-color: #8B1E1E;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-font-size: 18px;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 12 30;
+    -fx-border-color: #5A1212;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0.4, 0, 3);
+    -fx-cursor: hand;
+}
+
+.button-quit:hover {
+    -fx-background-color: linear-gradient(to bottom, #A52A2A, #661111);
+    -fx-translate-y: -2;
+}
+
+.button-quit:pressed {
+    -fx-background-color: #3D0A0A;
+    -fx-translate-y: 0;
+}
+
+/* ==============================
+   ⚙️ EFECTOS GENERALES
+   ============================== */
+.button-play, .button-options, .button-quit {
+    -fx-transition: all 0.2s ease-in-out;
+    -fx-font-family: "Arial Black", "Segoe UI Bold";
+    -fx-letter-spacing: 1px;
+    -fx-text-transform: uppercase;
+}
+
+/* Fondo realmente transparente */
+.transparent {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+}
+
+/* Quita fondo del ScrollPane */
+.scroll-pane {
+    -fx-background-color: transparent !important;
+}
+
+/* Quita fondo del viewport del ScrollPane (la causa del fondo blanco) */
+.scroll-pane .viewport {
+    -fx-background-color: transparent !important;
+}
+
+/* Contenedores transparentes */
+.hbox,
+.vbox,
+.border-pane,
+.stack-pane,
+.anchor-pane,
+.grid-pane,
+.region,
+.pane {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent !important;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+}
