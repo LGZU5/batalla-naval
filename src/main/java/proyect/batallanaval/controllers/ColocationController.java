@@ -6,8 +6,7 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.input.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.*;
 import proyect.batallanaval.models.*;
 import proyect.batallanaval.views.ShipCellView;
 
@@ -55,14 +54,39 @@ public class ColocationController implements Initializable {
     }
 
     /* ---------- Grid 10x10 ---------- */
-
+    /** Initializes the 10x10 grid that represents the board for the game
+     * Clears any previously defined content, columns and row constraints.
+     * Creates 10 columns and rows with a fixed size so that the grid doesn't move
+     * Assigns the events to each cell for the drag-and-drop system
+     * The grid keeps a fixed size so that it doesn't resize unnecessarily
+     * **/
     private void inicializarGrid() {
         gridTablero.getChildren().clear();
+        gridTablero.getColumnConstraints().clear();
+        gridTablero.getRowConstraints().clear();
+
+        // The clumns and rows are fixed
+        for (int i = 0; i < Tablero.SIZE; i++) {
+            ColumnConstraints col = new ColumnConstraints(CELL_SIZE);
+            col.setMinWidth(CELL_SIZE);
+            col.setMaxWidth(CELL_SIZE);
+            col.setHgrow(Priority.NEVER);
+            gridTablero.getColumnConstraints().add(col);
+
+            RowConstraints row = new RowConstraints(CELL_SIZE);
+            row.setMinHeight(CELL_SIZE);
+            row.setMaxHeight(CELL_SIZE);
+            row.setVgrow(Priority.NEVER);
+            gridTablero.getRowConstraints().add(row);
+        }
 
         for (int fila = 0; fila < Tablero.SIZE; fila++) {
             for (int col = 0; col < Tablero.SIZE; col++) {
                 StackPane cell = new StackPane();
                 cell.setPrefSize(CELL_SIZE, CELL_SIZE);
+                cell.setMinSize(CELL_SIZE, CELL_SIZE);
+                cell.setMaxSize(CELL_SIZE, CELL_SIZE);
+
                 cell.setUserData(new int[]{fila, col});
                 cell.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
                 GridPane.setMargin(cell, new Insets(1));
@@ -73,6 +97,12 @@ public class ColocationController implements Initializable {
                 gridTablero.add(cell, col, fila);
             }
         }
+
+        // Total size of the grid is fixed
+        int total = Tablero.SIZE * CELL_SIZE + 2 * Tablero.SIZE; // an aprox adding the margins
+        gridTablero.setPrefSize(total, total);
+        gridTablero.setMinSize(total, total);
+        gridTablero.setMaxSize(total, total);
     }
 
     /* ---------- Flota inicial ya colocada ---------- */
