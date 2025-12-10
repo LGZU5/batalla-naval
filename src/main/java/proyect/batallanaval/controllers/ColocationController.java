@@ -233,23 +233,47 @@ public class ColocationController implements Initializable {
         return true;
     }
 
+    /*** Private method to move ship:
+     * Calculates the ship's current cells
+     * Calculates the destination cells
+     * Calculates the new cell position
+     * Checks for boundaries and collisions with other ships cell by cell
+     * If everything is valid, clears old cells and assigns the ship***/
     private boolean moverBarcoConDelta(Barco barco, int deltaFila, int deltaCol) {
-        List<Celda> originales = new ArrayList<>(barco.getCeldas());
-        if (originales.isEmpty() || (deltaFila == 0 && deltaCol == 0)) {
+        //Copy of cells that the ship is o, validates that the ship can move and has cells
+        List<Celda> actuales = new ArrayList<>(barco.getCeldas());
+        if (actuales.isEmpty() || (deltaFila == 0 && deltaCol == 0)) {
             return false;
         }
 
-        Celda primera = originales.get(0);
-        int nuevaFilaOrigen = primera.getFila() + deltaFila;
-        int nuevaColOrigen  = primera.getColumna() + deltaCol;
+        //List for new positions of the ship
+        List<Celda> nuevasCeldas = new ArrayList<>();
 
-        // *** aquí cambia: usamos la validación que ignora las propias celdas ***
-        if (!puedeReubicarBarcoIgnorandoPropiasCeldas(barco, nuevaFilaOrigen, nuevaColOrigen)) {
-            return false;
+        for (Celda c : actuales) {
+            //Does the math for the new position of the cell by adding the deltas
+            int nuevaFila = c.getFila() + deltaFila;
+            int nuevaCol  = c.getColumna() + deltaCol;
+
+            //Verifies that the new position is between the limits
+            if (nuevaFila < 0 || nuevaFila >= Tablero.SIZE
+                    || nuevaCol < 0 || nuevaCol >= Tablero.SIZE) {
+                return false;
+            }
+
+            //Obtains new destination
+            Celda destino = tablero.getCelda(nuevaFila, nuevaCol);
+
+            //Detects collisions
+            if (destino.tieneBarco() && !actuales.contains(destino)) {
+                return false;
+            }
+
+            //If the cell is valid it gets added to the list of new cells
+            nuevasCeldas.add(destino);
         }
 
-        // limpiar modelo + vista antiguas
-        for (Celda c : originales) {
+        //Cleans the model and the old view
+        for (Celda c : actuales) {
             StackPane cellView = getCell(c.getFila(), c.getColumna());
             if (cellView != null) {
                 cellView.getChildren().clear();
@@ -259,12 +283,15 @@ public class ColocationController implements Initializable {
         }
         barco.getCeldas().clear();
 
-        // recolocar en el modelo usando la API normal del tablero
-        Barco nuevoBarco = tablero.colocarBarco(nuevaFilaOrigen, nuevaColOrigen,
-                barco.getOrientacion(), barco.getTipo());
-        barco.getCeldas().addAll(nuevoBarco.getCeldas());
+        //Puts the ship in the new position
+        for (Celda destino : nuevasCeldas) {
+            destino.setBarco(barco);
+            destino.setEstado(EstadoCelda.BARCO);
+            barco.getCeldas().add(destino);
+        }
 
         pintarBarco(barco);
+
         return true;
     }
 
