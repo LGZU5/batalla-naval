@@ -106,11 +106,13 @@ public class ColocationController implements Initializable {
 
         barco.getCeldas().forEach(c -> {
             StackPane cell = getCell(c.getFila(), c.getColumna());
-            cell.getChildren().clear();
+            if (cell == null) return;
+
+            // Quitar solo la vista del barco, no las demás fichas
+            cell.getChildren().removeIf(n -> n instanceof ShipCellView);
 
             ShipCellView view = new ShipCellView(barco.getTipo(), CELL_SIZE);
 
-            // si este barco es el seleccionado, marcamos la vista
             if (esSeleccionado) {
                 view.setSeleccionado(true);
             }
@@ -276,7 +278,7 @@ public class ColocationController implements Initializable {
         for (Celda c : actuales) {
             StackPane cellView = getCell(c.getFila(), c.getColumna());
             if (cellView != null) {
-                cellView.getChildren().clear();
+                cellView.getChildren().removeIf(n -> n instanceof ShipCellView);
             }
             c.setBarco(null);
             c.setEstado(EstadoCelda.VACIA);
@@ -331,7 +333,7 @@ public class ColocationController implements Initializable {
             for (Celda c : actuales) {
                 StackPane cell = getCell(c.getFila(), c.getColumna());
                 if (cell != null) {
-                    cell.getChildren().clear();
+                    cell.getChildren().removeIf(n -> n instanceof ShipCellView); //Now it only removes the ship
                 }
                 c.setBarco(null);
                 c.setEstado(EstadoCelda.VACIA);
@@ -364,8 +366,9 @@ public class ColocationController implements Initializable {
         List<Celda> celdasActuales = new ArrayList<>(barco.getCeldas());
 
         for (int i = 0; i < longitud; i++) {
+            //If horizontal increases columns, if vertical increases rows
             int f = (nuevaOrientacion == Orientacion.HORIZONTAL) ? filaOrigen : filaOrigen + i;
-            int c = (nuevaOrientacion == Orientacion.HORIZONTAL) ? colOrigen : colOrigen + i;
+            int c = (nuevaOrientacion == Orientacion.HORIZONTAL) ? colOrigen + i : colOrigen;
 
             // fuera de tablero
             if (f < 0 || f >= Tablero.SIZE || c < 0 || c >= Tablero.SIZE) {
