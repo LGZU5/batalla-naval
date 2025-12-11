@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.geometry.Insets?>
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="proyect.batallanaval.controllers.GameController"
+            stylesheets="@styles/styles.css"
+            styleClass="bg-home">
+
+    <top>
+        <HBox alignment="CENTER">
+            <children>
+                <Label text="¡Ataca la Flota Enemiga!" styleClass="title"/>
+            </children>
+            <padding>
+                <Insets top="15" bottom="15"/>
+            </padding>
+        </HBox>
+    </top>
+
+    <center>
+        <GridPane fx:id="gridMaquina"
+                  BorderPane.alignment="CENTER"
+                  styleClass="grid-board">
+        </GridPane>
+    </center>
+
+</BorderPane>

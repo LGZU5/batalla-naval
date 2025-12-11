@@ -1,17 +1,23 @@
 package proyect.batallanaval.controllers;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 import proyect.batallanaval.models.*;
 import proyect.batallanaval.views.ShipCellView;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -35,6 +41,9 @@ public class MachineColocationController implements Initializable {
 
         @FXML
         private GridPane gridTableroMaquina;
+
+        @FXML
+        private Button btnContinuar;
 
         /** Size (in pixels) of each cell */
         private static final int CELL_SIZE = Tablero.CELL_SIZE;
@@ -76,6 +85,7 @@ public class MachineColocationController implements Initializable {
 
             inicializarGrid();
             pintarFlotaEnTablero();
+            botonContinuar();
             System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
 
         }
@@ -174,6 +184,41 @@ public class MachineColocationController implements Initializable {
                 cell.getChildren().add(view);
             });
         }
+
+        /**
+        * Loads the game view and switches the current scene
+        * to display the machine's board.
+        * <p>
+        * Any errors loading the FXML are printed to the standard error output.
+         * </p>
+        */
+        @FXML
+        private void irAJuego() {
+            try {
+                FXMLLoader loader = new FXMLLoader(
+                        getClass().getResource("/proyect/batallanaval/game-view.fxml")
+                );
+                Parent root = loader.load();
+
+                // IMPORTANTE: Inyectar el juego al GameController
+                GameController gameController = loader.getController();
+                gameController.setJuego(this.juego);
+
+                Stage stage = (Stage) btnContinuar.getScene().getWindow();
+                Scene scene = new Scene(root);
+                stage.setScene(scene);
+                stage.show();
+
+                System.out.println("Vista de juego cargada correctamente");
+            } catch (IOException ex) {
+                System.err.println("Error al cargar game-view.fxml:");
+                ex.printStackTrace();
+            }
+        }
+
+    private void botonContinuar() {
+        btnContinuar.setOnAction(e -> irAJuego());
+    }
 
         /**
         * Retrieves the {@link StackPane} that corresponds to the given row and column.
