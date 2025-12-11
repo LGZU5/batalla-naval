@@ -265,12 +265,12 @@ public class ColocationController implements Initializable {
         return true;
     }
 
-    /*** Private method to move ship:
+    /** Private method to move ship:
      * Calculates the ship's current cells
      * Calculates the destination cells
      * Calculates the new cell position
      * Checks for boundaries and collisions with other ships cell by cell
-     * If everything is valid, clears old cells and assigns the ship***/
+     * If everything is valid, clears old cells and assigns the ship **/
     private boolean moverBarcoConDelta(Barco barco, int deltaFila, int deltaCol) {
         //Copy of cells that the ship is o, validates that the ship can move and has cells
         List<Celda> actuales = new ArrayList<>(barco.getCeldas());
