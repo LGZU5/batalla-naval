@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="proyect.batallanaval.controllers.MachineColocationController"
+            stylesheets="@styles/styles.css"
+            styleClass="bg-home">
+
+    <top>
+        <HBox alignment="CENTER">
+            <children>
+                <Label text="Flota de la Máquina (Revisión)" styleClass="title"/>
+            </children>
+            <padding>
+                <Insets top="15" bottom="15"/>
+            </padding>
+        </HBox>
+    </top>
+
+    <center>
+        <GridPane fx:id="gridTableroMaquina"
+                  BorderPane.alignment="CENTER"
+                  styleClass="grid-board">
+        </GridPane>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER" spacing="20">
+            <children>
+                <Button fx:id="btnContinuar" text="Continuar al Juego" styleClass="button-play"/>
+            </children>
+            <padding>
+                <Insets top="10" bottom="15"/>
+            </padding>
+        </HBox>
+    </bottom>
+
+</BorderPane>
