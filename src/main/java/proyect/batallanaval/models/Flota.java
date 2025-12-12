@@ -19,4 +19,21 @@ public class Flota {
 
         return porta == 1 && submarinos == 2 && destructores == 3 && fragatas == 4;
     }
+
+    /**
+     * Verifica si todos los barcos en la flota han sido completamente hundidos.
+     * Esto es usado para determinar la condición de victoria/derrota.
+     *
+     * @return true si todos los barcos están hundidos; false en caso contrario.
+     */
+    public boolean estaFlotaHundida() {
+        for (Barco barco : barcos) {
+            // Asumimos que Barco.estaHundido() es correcto y funcional
+            if (!barco.estaHundido()) {
+                return false; // Si encontramos UN solo barco que NO está hundido, la flota no lo está.
+            }
+        }
+        // Si el bucle termina, significa que todos los barcos están hundidos.
+        return true;
+    }
 }

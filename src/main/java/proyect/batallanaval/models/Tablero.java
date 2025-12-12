@@ -3,6 +3,7 @@ package proyect.batallanaval.models;
 public class Tablero {
 
     public static final int SIZE = 10;
+    public static final int CELL_SIZE = 30;
 
     private final Celda[][] celdas;
 

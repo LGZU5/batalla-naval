@@ -7,6 +7,12 @@ public class Jugador {
     private final Flota flota;
 
     public Jugador(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El nickname del jugador no puede ser nulo ni vacío."
+            );
+        }
+
         this.nickname = nickname;
         this.tableroPosicion = new Tablero();
         this.flota = new Flota();
