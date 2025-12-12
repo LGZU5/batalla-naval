@@ -355,35 +355,6 @@ public class ColocationController implements Initializable {
         event.consume();
     }
 
-/*    private boolean puedeReubicarBarcoIgnorandoPropiasCeldas(Barco barco,
-                                                             int filaOrigen,
-                                                             int colOrigen) {
-        int longitud = barco.getTipo().getSize();
-        Orientacion orientacion = barco.getOrientacion();
-
-        // conjunto de celdas actuales del barco para poder ignorarlas
-        List<Celda> celdasActuales = new ArrayList<>(barco.getCeldas());
-
-        for (int i = 0; i < longitud; i++) {
-            int f = (orientacion == Orientacion.HORIZONTAL) ? filaOrigen : filaOrigen + i;
-            int c = (orientacion == Orientacion.HORIZONTAL) ? colOrigen : colOrigen + i;
-
-            // fuera del tablero
-            if (f < 0 || f >= Tablero.SIZE || c < 0 || c >= Tablero.SIZE) {
-                return false;
-            }
-
-            Celda celdaDestino = tablero.getCelda(f, c);
-
-            // si la celda destino ya pertenece a este mismo barco, la ignoramos
-            boolean esParteDelMismoBarco = celdasActuales.contains(celdaDestino);
-            if (celdaDestino.tieneBarco() && !esParteDelMismoBarco) {
-                return false; // colisión con otro barco
-            }
-        }
-        return true;
-    }*/
-
     /**
      * Moves a ship on the board by applying the given row and column deltas.
      * <p>
