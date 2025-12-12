@@ -459,6 +459,36 @@ public class ColocationController implements Initializable {
     }
 
 
+    /**
+     * Loads the game view and switches the current scene
+     * to display the machine's board.
+     * <p>
+     * Any errors loading the FXML are printed to the standard error output.
+     * </p>
+     */
+    @FXML
+    private void irAJuego() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/proyect/batallanaval/game-view.fxml")
+            );
+            Parent root = loader.load();
+
+            GameController gameController = loader.getController();
+            gameController.setJuego(this.juego);
+
+            Stage stage = (Stage) btnJugar.getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setScene(scene);
+            stage.show();
+
+            System.out.println("Vista de juego cargada correctamente");
+        } catch (IOException ex) {
+            System.err.println("Error al cargar game-view.fxml:");
+            ex.printStackTrace();
+        }
+    }
+
     /* ---------- Botones ---------- */
     /**
      * Configures the behavior of the rotation and play buttons.
@@ -526,7 +556,7 @@ public class ColocationController implements Initializable {
             }
 
             // Go to machine colocation view
-            irAColocacionMaquina();
+            irAJuego();
         });
     }
 

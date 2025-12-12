@@ -1,5 +1,6 @@
 package proyect.batallanaval.controllers;
 
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -72,21 +73,13 @@ public class MachineColocationController implements Initializable {
 // fallback for testing
             juego = new Juego("Jugador");
         }
+    }
 
-        maquina = juego.getMaquina();
-        tablero = maquina.getTableroPosicion();
-        flota = maquina.getFlota();
-
-// Generate fleet only if not already complete
-        if (!flota.estaCompleta()) {
-            GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
-            generador.generarFlotaAleatoria(flota, tablero);
-        }
-
-        inicializarGrid();
-        pintarFlotaEnTablero();
-        botonContinuar();
-        System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
+    @FXML
+    public void Continuar(ActionEvent event) {
+        Node source = (Node) event.getSource();
+        Stage stage = (Stage) source.getScene().getWindow();
+        stage.close();
     }
 
     /**
@@ -100,6 +93,26 @@ public class MachineColocationController implements Initializable {
      */
     public void setJuego(Juego juego) {
         this.juego = juego;
+        this.maquina = juego.getMaquina();
+        this.tablero = maquina.getTableroPosicion();
+        this.flota = maquina.getFlota();
+
+        if (!flota.estaCompleta()) {
+            GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
+            generador.generarFlotaAleatoria(flota, tablero);
+            System.out.println("Flota de la Máquina GENERADA aleatoriamente.");
+        } else {
+            System.out.println("Flota de la Máquina ya existía, usando flota previa.");
+        }
+
+        // Inicializar y pintar la vista con el modelo final
+        if (gridTableroMaquina != null) {
+            inicializarGrid();
+            pintarFlotaEnTablero();
+            System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
+        } else {
+            System.err.println("ERROR: gridTableroMaquina es null.");
+        }
     }
 
     /* ---------- Grid 10x10 (10×10 read-only board) ---------- */
@@ -183,39 +196,6 @@ public class MachineColocationController implements Initializable {
         });
     }
 
-    /**
-     * Loads the game view and switches the current scene
-     * to display the machine's board.
-     * <p>
-     * Any errors loading the FXML are printed to the standard error output.
-     * </p>
-     */
-    @FXML
-    private void irAJuego() {
-        try {
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/proyect/batallanaval/game-view.fxml")
-            );
-            Parent root = loader.load();
-
-            GameController gameController = loader.getController();
-            gameController.setJuego(this.juego);
-
-            Stage stage = (Stage) btnContinuar.getScene().getWindow();
-            Scene scene = new Scene(root);
-            stage.setScene(scene);
-            stage.show();
-
-            System.out.println("Vista de juego cargada correctamente");
-        } catch (IOException ex) {
-            System.err.println("Error al cargar game-view.fxml:");
-            ex.printStackTrace();
-        }
-    }
-
-    private void botonContinuar() {
-        btnContinuar.setOnAction(e -> irAJuego());
-    }
 
     /**
      * Retrieves the {@link StackPane} that corresponds to the given row and column.
