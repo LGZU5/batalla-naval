@@ -9,12 +9,13 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import proyect.batallanaval.models.*;
 import proyect.batallanaval.views.ShipCellView;
+import proyect.batallanaval.models.strategy.EstrategiaAleatoria;
+import proyect.batallanaval.models.strategy.EstrategiaAtaque;
 
 import java.io.IOException;
 import java.net.URL;
@@ -40,6 +41,11 @@ public class GameController implements Initializable {
     private Juego juego;
     private Jugador humano;
     private Maquina maquina;
+
+    // MACHINE THREAD
+    private MaquinaThread maquinaThread;
+    private EstrategiaAtaque estrategiaMaquina;
+
 
     // GAME STATE (Simplificado - solo para la vista)
     private StackPane celdaSeleccionadaMaquina;
@@ -73,6 +79,9 @@ public class GameController implements Initializable {
             inicializarVista(gridMaquina, maquina.getTableroPosicion(), maquina.getFlota(), false);
 
             configurarManejadoresAtaque();
+
+            // 3. Incializar y comenzar la MachineThread
+            iniciarThreadMaquina();
         } else {
             System.out.println("ERROR: Uno o ambos grids son nulos!");
         }
@@ -85,6 +94,138 @@ public class GameController implements Initializable {
         System.out.println("Referencias asignadas.");
     }
 
+    private void iniciarThreadMaquina() {
+        if (humano.getFlota() == null || humano.getFlota().getBarcos().isEmpty()) {
+            System.err.println("ERROR: Flota del jugador no está inicializada!");
+            return;
+        }
+
+        System.out.println("GC - juego: " + System.identityHashCode(juego));
+        System.out.println("GC - flota máquina size: " +
+                (maquina.getFlota() == null ? "null" : maquina.getFlota().getBarcos().size()));
+
+        if (maquina.getFlota() == null || maquina.getFlota().getBarcos().isEmpty()) {
+            System.err.println("ERROR: Flota de la máquina no está inicializada!");
+            return;
+        }
+
+        System.out.println("Iniciando thread - Barcos Jugador: " + humano.getFlota().getBarcos().size());
+        System.out.println("Iniciando thread - Barcos Máquina: " + maquina.getFlota().getBarcos().size());
+
+        // Create attack strategy (can be changed to other implementations)
+        estrategiaMaquina = new EstrategiaAleatoria();
+
+        // Create and start machine thread
+        maquinaThread = new MaquinaThread(
+                juego,
+                estrategiaMaquina,
+                this::actualizarVistaCompleta,  // UI refresh callback
+                this::verificarGanador           // Winner check callback
+        );
+
+        maquinaThread.start();
+        System.out.println("Thread de la máquina iniciado.");
+    }
+
+    private void actualizarVistaCompleta() {
+        // Update player board (shows hits on player's ships)
+        actualizarTableroJugador();
+
+        // Update machine board (shows player's attacks)
+        actualizarTableroMaquina();
+
+        // Update turn message
+        if (juego.esTurnoJugador()) {
+            lblMensajeTurno.setText("Tu turno - Selecciona una casilla para atacar");
+        } else {
+            lblMensajeTurno.setText("Turno de la máquina - Pensando...");
+        }
+    }
+
+    private void actualizarTableroJugador() {
+        Tablero tableroJugador = humano.getTableroPosicion();
+
+        for (Node node : playerGrid.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                int fila = pos[0];
+                int col = pos[1];
+
+                EstadoCelda estado = tableroJugador.getCelda(fila, col).getEstado();
+
+                // Only update attacked cells
+                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
+                    Celda celda = tableroJugador.getCelda(fila, col);
+
+                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
+                        // Sunk ship - paint red
+                        cell.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
+                    } else if (estado == EstadoCelda.TOCADA) {
+                        // Hit - paint orange
+                        cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                    }
+                }
+            }
+        }
+    }
+
+    private void actualizarTableroMaquina() {
+        Tablero tableroMaquina = maquina.getTableroPosicion();
+
+        for (Node node : gridMaquina.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                int fila = pos[0];
+                int col = pos[1];
+
+                EstadoCelda estado = tableroMaquina.getCelda(fila, col).getEstado();
+
+                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
+                    Celda celda = tableroMaquina.getCelda(fila, col);
+
+                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
+                        // Sunk ship - paint all cells red
+                        pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
+                    } else if (estado == EstadoCelda.TOCADA) {
+                        // Hit - paint orange
+                        cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                    }
+                }
+            }
+        }
+    }
+
+    private void verificarGanador() {
+        System.out.println("=== VERIFICANDO GANADOR ===");
+        System.out.println("Flota Máquina hundida: " + maquina.getFlota().estaFlotaHundida());
+        System.out.println("Flota Jugador hundida: " + humano.getFlota().estaFlotaHundida());
+        System.out.println("Barcos Máquina: " + maquina.getFlota().getBarcos().size());
+        System.out.println("Barcos Jugador: " + humano.getFlota().getBarcos().size());
+
+        if (juego.haGanadoJugador()) {
+            System.out.println("¡JUGADOR GANÓ!");
+            detenerThreadMaquina();
+            mostrarAlerta("¡VICTORIA!",
+                    "¡GANASTE! Has hundido toda la flota enemiga.",
+                    Alert.AlertType.INFORMATION);
+        } else if (juego.haGanadoMaquina()) {
+            System.out.println("¡MÁQUINA GANÓ!");
+            detenerThreadMaquina();
+            mostrarAlerta("DERROTA",
+                    "La máquina ha hundido toda tu flota. ¡Mejor suerte la próxima vez!",
+                    Alert.AlertType.INFORMATION);
+        } else {
+            System.out.println("Juego continúa...");
+        }
+    }
+
+    private void detenerThreadMaquina() {
+        if (maquinaThread != null) {
+            maquinaThread.requestStop();
+            System.out.println("Thread de la máquina detenido.");
+        }
+    }
+
     /* ---------- Lógica de Ataque (Selección y Ejecución) ---------- */
 
     private void configurarManejadoresAtaque() {
@@ -95,6 +236,7 @@ public class GameController implements Initializable {
         }
         btnAtacar.setOnAction(e -> handleAttack());
     }
+
 
     private void seleccionarCeldaAtaque(StackPane cell) {
         // Verificar si es el turno del jugador (AHORA desde Juego)
@@ -357,5 +499,9 @@ public class GameController implements Initializable {
             System.err.println("Error al cargar machine-colocation-view.fxml:");
             ex.printStackTrace();
         }
+    }
+
+    public void cleanup() {
+        detenerThreadMaquina();
     }
 }

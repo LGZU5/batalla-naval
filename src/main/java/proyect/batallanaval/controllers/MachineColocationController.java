@@ -68,11 +68,6 @@ public class MachineColocationController implements Initializable {
      */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-// If the game passes from another scene, it is assigned as setJuego(juego)
-        if (juego == null) {
-// fallback for testing
-            juego = new Juego("Jugador");
-        }
     }
 
     @FXML
@@ -96,6 +91,9 @@ public class MachineColocationController implements Initializable {
         this.maquina = juego.getMaquina();
         this.tablero = maquina.getTableroPosicion();
         this.flota = maquina.getFlota();
+
+        System.out.println("MC - juego: " + System.identityHashCode(juego));
+        System.out.println("MC - flota máquina size AFTER generate: " + flota.getBarcos().size());
 
         if (!flota.estaCompleta()) {
             GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();

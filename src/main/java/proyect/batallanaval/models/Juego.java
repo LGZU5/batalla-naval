@@ -22,6 +22,14 @@ public class Juego {
         this.jugador = new Jugador(nicknameJugador);
         this.maquina = new Maquina("CPU");
         this.esTurnoJugador = true; // El jugador siempre empieza
+
+        GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
+        generador.generarFlotaAleatoria(
+                maquina.getFlota(),
+                maquina.getTableroPosicion()
+        );
+        System.out.println("Flota de la máquina generada desde Juego. Barcos: "
+                + maquina.getFlota().getBarcos().size());
     }
 
     public Jugador getJugador() {
