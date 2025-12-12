@@ -542,12 +542,21 @@ public class ColocationController implements Initializable {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/proyect/batallanaval/machine-colocation-view.fxml"));
             Parent root = loader.load();
 
+            // --- INYECCIÓN CRÍTICA RESTAURADA ---
+            MachineColocationController machineController = loader.getController();
+            machineController.setJuego(this.juego); // Pasa el objeto 'juego' CON la flota del jugador
+            // ------------------------------------
+
             Stage stage = (Stage) btnJugar.getScene().getWindow();
             stage.setScene(new Scene(root));
+            stage.show(); // Se debe llamar a show() para actualizar la escena
+
+            System.out.println("Transición a Colocación Máquina exitosa.");
         } catch (IOException ex) {
+            System.err.println("Error al cargar machine-colocation-view.fxml:");
             ex.printStackTrace();
         }
-        }
+    }
 
     /**
      * Validates if the ship can be rotated to a new orientation at the given origin

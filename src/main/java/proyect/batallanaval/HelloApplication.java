@@ -6,7 +6,7 @@ import proyect.batallanaval.views.HomeView;
 
 import java.io.IOException;
 
-public class HelloApplication extends Application {
+public class    HelloApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         HomeView homeView = new HomeView();

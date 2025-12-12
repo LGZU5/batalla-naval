@@ -29,212 +29,209 @@ import java.util.ResourceBundle;
  * <p>
  * When initialized, the controller:
  * <ul>
- *     <li>Retrieves or creates the shared {@link Juego} instance.</li>
- *     <li>Accesses the machine's {@link Tablero} and {@link Flota}.</li>
- *     <li>Generates a random fleet if one has not yet been created.</li>
- *     <li>Builds a 10×10 grid of non-interactive cells.</li>
- *     <li>Renders the machine’s fleet visually on the board.</li>
+ * <li>Retrieves or creates the shared {@link Juego} instance.</li>
+ * <li>Accesses the machine's {@link Tablero} and {@link Flota}.</li>
+ * <li>Generates a random fleet if one has not yet been created.</li>
+ * <li>Builds a 10×10 grid of non-interactive cells.</li>
+ * <li>Renders the machine’s fleet visually on the board.</li>
  * </ul>
  * </p>
  */
 public class MachineColocationController implements Initializable {
 
-        @FXML
-        private GridPane gridTableroMaquina;
+    @FXML
+    private GridPane gridTableroMaquina;
 
-        @FXML
-        private Button btnContinuar;
+    @FXML
+    private Button btnContinuar;
 
-        /** Size (in pixels) of each cell */
-        private static final int CELL_SIZE = Tablero.CELL_SIZE;
+    /** Size (in pixels) of each cell */
+    private static final int CELL_SIZE = Tablero.CELL_SIZE;
 
-        private Juego juego;
-        private Maquina maquina;
-        private Tablero tablero;
-        private Flota flota;
+    private Juego juego;
+    private Maquina maquina;
+    private Tablero tablero;
+    private Flota flota;
 
-        /**
-        * Initializes the controller after the FXML view has been loaded.
-        * <p>
-        * If the {@code Juego} instance has not been injected externally,
-        * a fallback game is created for testing purposes.
-        * </p>
-        * This method prepares the machine's board, ensures its fleet is generated,
-        * builds the graphical grid, and paints the ships on it.
-        *
-        * @param url            unused URL parameter (FXML requirement)
-        * @param resourceBundle unused ResourceBundle parameter (FXML requirement)
-        */
-        @Override
-        public void initialize(URL url, ResourceBundle resourceBundle) {
-            // If the game passes from another scene, it is assigned as setJuego(juego)
-            if (juego == null) {
-                // fallback for testing
-                juego = new Juego("Jugador");
-            }
-
-            maquina = juego.getMaquina();
-            tablero = maquina.getTableroPosicion();
-            flota   = maquina.getFlota();
-
-            // Generate fleet only if not already complete
-            if (!flota.estaCompleta()) {
-                GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
-                generador.generarFlotaAleatoria(flota, tablero);
-            }
-
-            inicializarGrid();
-            pintarFlotaEnTablero();
-            botonContinuar();
-            System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
-
+    /**
+     * Initializes the controller after the FXML view has been loaded.
+     * <p>
+     * If the {@code Juego} instance has not been injected externally,
+     * a fallback game is created for testing purposes.
+     * </p>
+     * This method prepares the machine's board, ensures its fleet is generated,
+     * builds the graphical grid, and paints the ships on it.
+     *
+     * @param url unused URL parameter (FXML requirement)
+     * @param resourceBundle unused ResourceBundle parameter (FXML requirement)
+     */
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+// If the game passes from another scene, it is assigned as setJuego(juego)
+        if (juego == null) {
+// fallback for testing
+            juego = new Juego("Jugador");
         }
 
-        /**
-        * Injects the shared {@link Juego} instance used across scenes.
-        * <p>
-        * This method must be called by the controller that loads this view
-        * to ensure both controllers operate on the same game state.
-        * </p>
-        *
-        * @param juego the game instance to associate with this controller
-        */
-        public void setJuego(Juego juego) {
-            this.juego = juego;
+        maquina = juego.getMaquina();
+        tablero = maquina.getTableroPosicion();
+        flota = maquina.getFlota();
+
+// Generate fleet only if not already complete
+        if (!flota.estaCompleta()) {
+            GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
+            generador.generarFlotaAleatoria(flota, tablero);
         }
 
-        /* ---------- Grid 10x10 (10×10 read-only board) ---------- */
+        inicializarGrid();
+        pintarFlotaEnTablero();
+        botonContinuar();
+        System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
+    }
 
-        /**
-        * Builds a 10×10 grid of non-interactive cells representing
-        * the machine's territory.
-        * <p>
-        * Each cell is a {@link StackPane} with fixed dimensions.
-        * No event handlers (click, drag, etc.) are registered because
-        * this board is intended for visualization only.
-        * </p>
-        */
-        private void inicializarGrid() {
-            gridTableroMaquina.getChildren().clear();
-            gridTableroMaquina.getColumnConstraints().clear();
-            gridTableroMaquina.getRowConstraints().clear();
+    /**
+     * Injects the shared {@link Juego} instance used across scenes.
+     * <p>
+     * This method must be called by the controller that loads this view
+     * to ensure both controllers operate on the same game state.
+     * </p>
+     *
+     * @param juego the game instance to associate with this controller
+     */
+    public void setJuego(Juego juego) {
+        this.juego = juego;
+    }
 
-            for (int i = 0; i < Tablero.SIZE; i++) {
-                ColumnConstraints col = new ColumnConstraints(CELL_SIZE);
-                col.setMinWidth(CELL_SIZE);
-                col.setMaxWidth(CELL_SIZE);
-                col.setHgrow(Priority.NEVER);
-                gridTableroMaquina.getColumnConstraints().add(col);
+    /* ---------- Grid 10x10 (10×10 read-only board) ---------- */
 
-                RowConstraints row = new RowConstraints(CELL_SIZE);
-                row.setMinHeight(CELL_SIZE);
-                row.setMaxHeight(CELL_SIZE);
-                row.setVgrow(Priority.NEVER);
-                gridTableroMaquina.getRowConstraints().add(row);
-            }
+    /**
+     * Builds a 10×10 grid of non-interactive cells representing
+     * the machine's territory.
+     * <p>
+     * Each cell is a {@link StackPane} with fixed dimensions.
+     * No event handlers (click, drag, etc.) are registered because
+     * this board is intended for visualization only.
+     * </p>
+     */
+    private void inicializarGrid() {
+        gridTableroMaquina.getChildren().clear();
+        gridTableroMaquina.getColumnConstraints().clear();
+        gridTableroMaquina.getRowConstraints().clear();
 
-            for (int fila = 0; fila < Tablero.SIZE; fila++) {
-                for (int col = 0; col < Tablero.SIZE; col++) {
-                    StackPane cell = new StackPane();
-                    cell.setPrefSize(CELL_SIZE, CELL_SIZE);
-                    cell.setMinSize(CELL_SIZE, CELL_SIZE);
-                    cell.setMaxSize(CELL_SIZE, CELL_SIZE);
+        for (int i = 0; i < Tablero.SIZE; i++) {
+            ColumnConstraints col = new ColumnConstraints(CELL_SIZE);
+            col.setMinWidth(CELL_SIZE);
+            col.setMaxWidth(CELL_SIZE);
+            col.setHgrow(Priority.NEVER);
+            gridTableroMaquina.getColumnConstraints().add(col);
 
-                    cell.setUserData(new int[]{fila, col});
-                    cell.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
-                    GridPane.setMargin(cell, new Insets(1));
-
-                    gridTableroMaquina.add(cell, col, fila);
-                }
-            }
-
-            int total = Tablero.SIZE * CELL_SIZE + 2 * Tablero.SIZE;
-            gridTableroMaquina.setPrefSize(total, total);
-            gridTableroMaquina.setMinSize(total, total);
-            gridTableroMaquina.setMaxSize(total, total);
+            RowConstraints row = new RowConstraints(CELL_SIZE);
+            row.setMinHeight(CELL_SIZE);
+            row.setMaxHeight(CELL_SIZE);
+            row.setVgrow(Priority.NEVER);
+            gridTableroMaquina.getRowConstraints().add(row);
         }
 
-        /* ---------- Pintar flota aleatoria de la máquina ---------- */
-        /**
-        * Iterates through the machine's fleet and renders each ship visually
-        * on the corresponding cells of the grid.
-        */
-        private void pintarFlotaEnTablero() {
-            for (Barco barco : flota.getBarcos()) {
-                pintarBarco(barco);
+        for (int fila = 0; fila < Tablero.SIZE; fila++) {
+            for (int col = 0; col < Tablero.SIZE; col++) {
+                StackPane cell = new StackPane();
+                cell.setPrefSize(CELL_SIZE, CELL_SIZE);
+                cell.setMinSize(CELL_SIZE, CELL_SIZE);
+                cell.setMaxSize(CELL_SIZE, CELL_SIZE);
+
+                cell.setUserData(new int[]{fila, col});
+                cell.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
+                GridPane.setMargin(cell, new Insets(1));
+
+                gridTableroMaquina.add(cell, col, fila);
             }
         }
 
-        /**
-        * Paints a single ship on the grid by rendering a {@link ShipCellView}
-        * in each cell occupied by the ship.
-        *
-        * @param barco the ship to be visually rendered
-        */
-        private void pintarBarco(Barco barco) {
-            barco.getCeldas().forEach(c -> {
-                StackPane cell = getCell(c.getFila(), c.getColumna());
-                if (cell == null) return;
+        int total = Tablero.SIZE * CELL_SIZE + 2 * Tablero.SIZE;
+        gridTableroMaquina.setPrefSize(total, total);
+        gridTableroMaquina.setMinSize(total, total);
+        gridTableroMaquina.setMaxSize(total, total);
+    }
 
-                // Elimina solo vistas anteriores de barcos
-                cell.getChildren().removeIf(n -> n instanceof ShipCellView);
-
-                ShipCellView view = new ShipCellView(barco.getTipo(), CELL_SIZE);
-
-                cell.getChildren().add(view);
-            });
+    /* ---------- Pintar flota aleatoria de la máquina ---------- */
+    /**
+     * Iterates through the machine's fleet and renders each ship visually
+     * on the corresponding cells of the grid.
+     */
+    private void pintarFlotaEnTablero() {
+        for (Barco barco : flota.getBarcos()) {
+            pintarBarco(barco);
         }
+    }
 
-        /**
-        * Loads the game view and switches the current scene
-        * to display the machine's board.
-        * <p>
-        * Any errors loading the FXML are printed to the standard error output.
-         * </p>
-        */
-        @FXML
-        private void irAJuego() {
-            try {
-                FXMLLoader loader = new FXMLLoader(
-                        getClass().getResource("/proyect/batallanaval/game-view.fxml")
-                );
-                Parent root = loader.load();
+    /**
+     * Paints a single ship on the grid by rendering a {@link ShipCellView}
+     * in each cell occupied by the ship.
+     *
+     * @param barco the ship to be visually rendered
+     */
+    private void pintarBarco(Barco barco) {
+        barco.getCeldas().forEach(c -> {
+            StackPane cell = getCell(c.getFila(), c.getColumna());
+            if (cell == null) return;
 
-                // IMPORTANTE: Inyectar el juego al GameController
-                GameController gameController = loader.getController();
-                gameController.setJuego(this.juego);
+            cell.getChildren().removeIf(n -> n instanceof ShipCellView);
 
-                Stage stage = (Stage) btnContinuar.getScene().getWindow();
-                Scene scene = new Scene(root);
-                stage.setScene(scene);
-                stage.show();
+            ShipCellView view = new ShipCellView(barco.getTipo(), CELL_SIZE);
 
-                System.out.println("Vista de juego cargada correctamente");
-            } catch (IOException ex) {
-                System.err.println("Error al cargar game-view.fxml:");
-                ex.printStackTrace();
-            }
+            cell.getChildren().add(view);
+        });
+    }
+
+    /**
+     * Loads the game view and switches the current scene
+     * to display the machine's board.
+     * <p>
+     * Any errors loading the FXML are printed to the standard error output.
+     * </p>
+     */
+    @FXML
+    private void irAJuego() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/proyect/batallanaval/game-view.fxml")
+            );
+            Parent root = loader.load();
+
+            GameController gameController = loader.getController();
+            gameController.setJuego(this.juego);
+
+            Stage stage = (Stage) btnContinuar.getScene().getWindow();
+            Scene scene = new Scene(root);
+            stage.setScene(scene);
+            stage.show();
+
+            System.out.println("Vista de juego cargada correctamente");
+        } catch (IOException ex) {
+            System.err.println("Error al cargar game-view.fxml:");
+            ex.printStackTrace();
         }
+    }
 
     private void botonContinuar() {
         btnContinuar.setOnAction(e -> irAJuego());
     }
 
-        /**
-        * Retrieves the {@link StackPane} that corresponds to the given row and column.
-        *
-        * @param fila the row index
-        * @param col  the column index
-        * @return the matching StackPane, or {@code null} if not found
-        */
-        private StackPane getCell(int fila, int col) {
-            for (Node node : gridTableroMaquina.getChildren()) {
-                Integer r = GridPane.getRowIndex(node);
-                Integer c = GridPane.getColumnIndex(node);
-                if (r != null && c != null && r == fila && c == col) {
-                    return (StackPane) node;
-                }
+    /**
+     * Retrieves the {@link StackPane} that corresponds to the given row and column.
+     *
+     * @param fila the row index
+     * @param col the column index
+     * @return the matching StackPane, or {@code null} if not found
+     */
+    private StackPane getCell(int fila, int col) {
+        for (Node node : gridTableroMaquina.getChildren()) {
+            Integer r = GridPane.getRowIndex(node);
+            Integer c = GridPane.getColumnIndex(node);
+            if (r != null && c != null && r == fila && c == col) {
+                return (StackPane) node;
             }
-            return null;
         }
+        return null;
+    }
 }
