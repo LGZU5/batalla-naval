@@ -7,12 +7,15 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import proyect.batallanaval.models.*;
 import proyect.batallanaval.views.ShipCellView;
+import proyect.batallanaval.models.strategy.EstrategiaAleatoria;
+import proyect.batallanaval.models.strategy.EstrategiaAtaque;
 
 import java.io.IOException;
 import java.net.URL;
@@ -29,7 +32,7 @@ public class GameController implements Initializable {
     @FXML private GridPane playerGrid;
     @FXML private GridPane gridMaquina;
     @FXML private Button btnAtacar;
-    @FXML private Label lblMensajeTurno; // Se mantiene para mostrar el resultado/estado
+    @FXML private Label lblMensajeTurno;
     @FXML private Button btnCheck;
 
     private static final int CELL_SIZE = Tablero.CELL_SIZE;
@@ -39,8 +42,13 @@ public class GameController implements Initializable {
     private Jugador humano;
     private Maquina maquina;
 
-    // GAME STATE (Simplificado)
-    private StackPane celdaSeleccionadaMaquina; // Celda visual seleccionada para el ataque
+    // MACHINE THREAD
+    private MaquinaThread maquinaThread;
+    private EstrategiaAtaque estrategiaMaquina;
+
+
+    // GAME STATE (Simplificado - solo para la vista)
+    private StackPane celdaSeleccionadaMaquina;
     private int filaAtaque = -1;
     private int colAtaque = -1;
 
@@ -71,6 +79,9 @@ public class GameController implements Initializable {
             inicializarVista(gridMaquina, maquina.getTableroPosicion(), maquina.getFlota(), false);
 
             configurarManejadoresAtaque();
+
+            // 3. Incializar y comenzar la MachineThread
+            iniciarThreadMaquina();
         } else {
             System.out.println("ERROR: Uno o ambos grids son nulos!");
         }
@@ -81,6 +92,138 @@ public class GameController implements Initializable {
         this.humano = juego.getJugador();
         this.maquina = juego.getMaquina();
         System.out.println("Referencias asignadas.");
+    }
+
+    private void iniciarThreadMaquina() {
+        if (humano.getFlota() == null || humano.getFlota().getBarcos().isEmpty()) {
+            System.err.println("ERROR: Flota del jugador no está inicializada!");
+            return;
+        }
+
+        System.out.println("GC - juego: " + System.identityHashCode(juego));
+        System.out.println("GC - flota máquina size: " +
+                (maquina.getFlota() == null ? "null" : maquina.getFlota().getBarcos().size()));
+
+        if (maquina.getFlota() == null || maquina.getFlota().getBarcos().isEmpty()) {
+            System.err.println("ERROR: Flota de la máquina no está inicializada!");
+            return;
+        }
+
+        System.out.println("Iniciando thread - Barcos Jugador: " + humano.getFlota().getBarcos().size());
+        System.out.println("Iniciando thread - Barcos Máquina: " + maquina.getFlota().getBarcos().size());
+
+        // Create attack strategy (can be changed to other implementations)
+        estrategiaMaquina = new EstrategiaAleatoria();
+
+        // Create and start machine thread
+        maquinaThread = new MaquinaThread(
+                juego,
+                estrategiaMaquina,
+                this::actualizarVistaCompleta,  // UI refresh callback
+                this::verificarGanador           // Winner check callback
+        );
+
+        maquinaThread.start();
+        System.out.println("Thread de la máquina iniciado.");
+    }
+
+    private void actualizarVistaCompleta() {
+        // Update player board (shows hits on player's ships)
+        actualizarTableroJugador();
+
+        // Update machine board (shows player's attacks)
+        actualizarTableroMaquina();
+
+        // Update turn message
+        if (juego.esTurnoJugador()) {
+            lblMensajeTurno.setText("Tu turno - Selecciona una casilla para atacar");
+        } else {
+            lblMensajeTurno.setText("Turno de la máquina - Pensando...");
+        }
+    }
+
+    private void actualizarTableroJugador() {
+        Tablero tableroJugador = humano.getTableroPosicion();
+
+        for (Node node : playerGrid.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                int fila = pos[0];
+                int col = pos[1];
+
+                EstadoCelda estado = tableroJugador.getCelda(fila, col).getEstado();
+
+                // Only update attacked cells
+                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
+                    Celda celda = tableroJugador.getCelda(fila, col);
+
+                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
+                        // Sunk ship - paint red
+                        cell.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
+                    } else if (estado == EstadoCelda.TOCADA) {
+                        // Hit - paint orange
+                        cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                    }
+                }
+            }
+        }
+    }
+
+    private void actualizarTableroMaquina() {
+        Tablero tableroMaquina = maquina.getTableroPosicion();
+
+        for (Node node : gridMaquina.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                int fila = pos[0];
+                int col = pos[1];
+
+                EstadoCelda estado = tableroMaquina.getCelda(fila, col).getEstado();
+
+                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
+                    Celda celda = tableroMaquina.getCelda(fila, col);
+
+                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
+                        // Sunk ship - paint all cells red
+                        pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
+                    } else if (estado == EstadoCelda.TOCADA) {
+                        // Hit - paint orange
+                        cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                    }
+                }
+            }
+        }
+    }
+
+    private void verificarGanador() {
+        System.out.println("=== VERIFICANDO GANADOR ===");
+        System.out.println("Flota Máquina hundida: " + maquina.getFlota().estaFlotaHundida());
+        System.out.println("Flota Jugador hundida: " + humano.getFlota().estaFlotaHundida());
+        System.out.println("Barcos Máquina: " + maquina.getFlota().getBarcos().size());
+        System.out.println("Barcos Jugador: " + humano.getFlota().getBarcos().size());
+
+        if (juego.haGanadoJugador()) {
+            System.out.println("¡JUGADOR GANÓ!");
+            detenerThreadMaquina();
+            mostrarAlerta("¡VICTORIA!",
+                    "¡GANASTE! Has hundido toda la flota enemiga.",
+                    Alert.AlertType.INFORMATION);
+        } else if (juego.haGanadoMaquina()) {
+            System.out.println("¡MÁQUINA GANÓ!");
+            detenerThreadMaquina();
+            mostrarAlerta("DERROTA",
+                    "La máquina ha hundido toda tu flota. ¡Mejor suerte la próxima vez!",
+                    Alert.AlertType.INFORMATION);
+        } else {
+            System.out.println("Juego continúa...");
+        }
+    }
+
+    private void detenerThreadMaquina() {
+        if (maquinaThread != null) {
+            maquinaThread.requestStop();
+            System.out.println("Thread de la máquina detenido.");
+        }
     }
 
     /* ---------- Lógica de Ataque (Selección y Ejecución) ---------- */
@@ -94,22 +237,35 @@ public class GameController implements Initializable {
         btnAtacar.setOnAction(e -> handleAttack());
     }
 
+
     private void seleccionarCeldaAtaque(StackPane cell) {
+        // Verificar si es el turno del jugador (AHORA desde Juego)
+        if (!juego.esTurnoJugador()) {
+            mostrarAlerta("Turno bloqueado", "¡Espera! Es el turno de la máquina.", Alert.AlertType.WARNING);
+            return;
+        }
+
         Tablero tableroMaquina = maquina.getTableroPosicion();
         int[] pos = (int[]) cell.getUserData();
         int fila = pos[0];
         int col = pos[1];
 
-        // Verifica si la celda ya fue atacada (AGUA o ya TOCADA/HUNDIDA)
+        // Verifica si la celda ya fue atacada
         EstadoCelda estadoActual = tableroMaquina.getCelda(fila, col).getEstado();
         if (estadoActual == EstadoCelda.TOCADA || estadoActual == EstadoCelda.HUNDIDA) {
-            lblMensajeTurno.setText("¡Ya atacaste esa celda! Selecciona otra.");
+            mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
             return;
         }
 
         // 1. Desmarcar la celda previamente seleccionada
         if (celdaSeleccionadaMaquina != null) {
-            celdaSeleccionadaMaquina.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
+            int[] prevPos = (int[]) celdaSeleccionadaMaquina.getUserData();
+            EstadoCelda prevEstado = tableroMaquina.getCelda(prevPos[0], prevPos[1]).getEstado();
+
+            // Solo restaurar color si NO fue atacada
+            if (prevEstado != EstadoCelda.TOCADA && prevEstado != EstadoCelda.HUNDIDA) {
+                celdaSeleccionadaMaquina.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
+            }
         }
 
         // 2. Marcar la nueva celda seleccionada (amarillo)
@@ -118,38 +274,57 @@ public class GameController implements Initializable {
         celdaSeleccionadaMaquina = cell;
         celdaSeleccionadaMaquina.setStyle("-fx-background-color: yellow; -fx-border-color: #b0b0b0;");
 
-        btnAtacar.setDisable(false); // Habilitar el botón Atacar
-        lblMensajeTurno.setText("Objetivo seleccionado. ¡Presiona ATACAR!");
+        btnAtacar.setDisable(false);
     }
-
 
     @FXML
     private void handleAttack() {
         if (celdaSeleccionadaMaquina == null) {
-            lblMensajeTurno.setText("Error: Selecciona una celda antes de atacar.");
+            mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
             return;
         }
 
         System.out.println("Jugador atacando: (" + filaAtaque + ", " + colAtaque + ")");
 
-        Tablero tableroMaquina = maquina.getTableroPosicion();
+        try {
+            // 1. Ejecutar el ataque
+            ResultadoDisparo resultado = juego.ejecutarAtaqueJugador(filaAtaque, colAtaque);
 
-        // 1. Ejecutar el disparo en el modelo
-        ResultadoDisparo resultado = tableroMaquina.disparar(filaAtaque, colAtaque);
+            // 2. Actualizar la vista de la celda atacada
+            actualizarVistaAtaque(celdaSeleccionadaMaquina, resultado, maquina.getTableroPosicion(), gridMaquina);
 
-        // 2. Actualizar la vista de la celda atacada
-        actualizarVistaAtaque(celdaSeleccionadaMaquina, resultado, tableroMaquina, gridMaquina);
+            // 3. Revisar condición de victoria
+            if (juego.haGanadoJugador()) {
+                mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
+                return;
+            }
 
-        // 3. Revisar condición de victoria
-        if (maquina.getFlota().estaFlotaHundida()) {
-            mostrarMensajeFinal("¡GANASTE! Has hundido toda la flota enemiga.");
-            return;
+            // 4. Lógica de mensajes según el resultado
+            celdaSeleccionadaMaquina = null;
+            btnAtacar.setDisable(true);
+
+            switch (resultado) {
+                case AGUA:
+                    lblMensajeTurno.setText("¡AGUA! Turno de la máquina...");
+                    // El turno cambia automaticamente en Juego
+                    // turnoMaquina();
+                    break;
+
+                case TOCADO:
+                    lblMensajeTurno.setText("¡IMPACTO! Sigue disparando...");
+                    // El jugador mantiene el turno (Juego no lo cambió)
+                    break;
+
+                case HUNDIDO:
+                    lblMensajeTurno.setText("¡BARCO HUNDIDO! Sigue disparando...");
+                    // El jugador mantiene el turno (Juego no lo cambió)
+                    break;
+            }
+
+        } catch (IllegalStateException e) {
+            lblMensajeTurno.setText("Error: " + e.getMessage());
+            System.err.println(e.getMessage());
         }
-
-        // 4. Mostrar resultado y reiniciar estado de selección
-        lblMensajeTurno.setText("Resultado: " + resultado.name() + ". ¡Vuelve a seleccionar!");
-        celdaSeleccionadaMaquina = null;
-        btnAtacar.setDisable(true);
     }
 
     /* ---------- Lógica de Pintado de Celdas (Vista) ---------- */
@@ -159,10 +334,10 @@ public class GameController implements Initializable {
 
         switch (resultado) {
             case AGUA:
-                color = "blue";
+                color = "#4444ff"; // Azul
                 break;
             case TOCADO:
-                color = "orange";
+                color = "orange"; // Naranja
                 break;
             case HUNDIDO:
                 // Si es hundido, pintamos todas las celdas del barco en rojo
@@ -183,19 +358,29 @@ public class GameController implements Initializable {
             Barco barcoHundido = celdaModelo.getBarco();
 
             if (barcoHundido.estaHundido()) {
+                System.out.println("Pintando barco hundido: " + barcoHundido.getTipo());
+                System.out.println("Celdas del barco: " + barcoHundido.getCeldas().size());
+
+                // Pintar TODAS las celdas del barco en rojo
                 barcoHundido.getCeldas().forEach(c -> {
                     StackPane cellView = getCell(c.getColumna(), c.getFila(), grid);
                     if (cellView != null) {
                         cellView.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
+                        System.out.println("  Pintando celda: (" + c.getFila() + ", " + c.getColumna() + ") en ROJO");
+                    } else {
+                        System.out.println("  ERROR: No se encontró la celda visual para (" + c.getFila() + ", " + c.getColumna() + ")");
                     }
                 });
             }
         }
     }
 
-    private void mostrarMensajeFinal(String mensaje) {
-        lblMensajeTurno.setText(mensaje);
-        btnAtacar.setDisable(true);
+    private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
+        Alert alert = new Alert(tipo);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensaje);
+        alert.showAndWait();
     }
 
     /* ---------- Métodos Existentes y Auxiliares ---------- */
@@ -289,15 +474,6 @@ public class GameController implements Initializable {
         grid.setMaxSize(total, total);
     }
 
-    /**
-     * Loads the machine colocation view and switches the current scene
-     * to display the machine's board.
-     * <p>
-     * Any errors loading the FXML are printed to the standard error output.
-     * </p>
-     */
-
-
     private void irAColocacionMaquina() {
         if (this.juego == null) {
             System.err.println("ERROR: El objeto 'juego' no ha sido inicializado.");
@@ -308,19 +484,12 @@ public class GameController implements Initializable {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/proyect/batallanaval/machine-colocation-view.fxml"));
             Parent root = loader.load();
 
-            // Inyección del modelo: se pasa el mismo objeto Juego.
             MachineColocationController machineController = loader.getController();
             machineController.setJuego(this.juego);
 
-            // ********************************************************
-            // PASO 2: Crear un NUEVO Stage para abrir una nueva ventana
-            // ********************************************************
             Stage nuevaVentana = new Stage();
             nuevaVentana.setTitle("Vista de Colocación de la Máquina");
             nuevaVentana.setScene(new Scene(root));
-
-            // Opcional: Bloquear la interacción con la ventana principal mientras está abierta
-            // nuevaVentana.initModality(Modality.APPLICATION_MODAL);
 
             nuevaVentana.show();
 
@@ -330,5 +499,9 @@ public class GameController implements Initializable {
             System.err.println("Error al cargar machine-colocation-view.fxml:");
             ex.printStackTrace();
         }
+    }
+
+    public void cleanup() {
+        detenerThreadMaquina();
     }
 }

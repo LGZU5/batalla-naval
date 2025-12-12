@@ -27,13 +27,16 @@ public class Flota {
      * @return true si todos los barcos están hundidos; false en caso contrario.
      */
     public boolean estaFlotaHundida() {
-        for (Barco barco : barcos) {
-            // Asumimos que Barco.estaHundido() es correcto y funcional
-            if (!barco.estaHundido()) {
-                return false; // Si encontramos UN solo barco que NO está hundido, la flota no lo está.
-            }
+        if (barcos == null || barcos.isEmpty()) {
+            System.out.println("WARNING: Verificando flota vacía - retornando false");
+            return false;
         }
-        // Si el bucle termina, significa que todos los barcos están hundidos.
-        return true;
+
+        // Verificar si TODOS los barcos están hundidos
+        boolean todosHundidos = barcos.stream().allMatch(Barco::estaHundido);
+
+        System.out.println("Flota: " + barcos.size() + " barcos, todos hundidos: " + todosHundidos);
+
+        return todosHundidos;
     }
 }
