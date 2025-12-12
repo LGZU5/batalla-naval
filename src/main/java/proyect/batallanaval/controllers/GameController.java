@@ -7,7 +7,9 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -97,7 +99,7 @@ public class GameController implements Initializable {
     private void seleccionarCeldaAtaque(StackPane cell) {
         // Verificar si es el turno del jugador (AHORA desde Juego)
         if (!juego.esTurnoJugador()) {
-            lblMensajeTurno.setText("¡Espera! Es el turno de la máquina.");
+            mostrarAlerta("Turno bloqueado", "¡Espera! Es el turno de la máquina.", Alert.AlertType.WARNING);
             return;
         }
 
@@ -109,7 +111,7 @@ public class GameController implements Initializable {
         // Verifica si la celda ya fue atacada
         EstadoCelda estadoActual = tableroMaquina.getCelda(fila, col).getEstado();
         if (estadoActual == EstadoCelda.TOCADA || estadoActual == EstadoCelda.HUNDIDA) {
-            lblMensajeTurno.setText("¡Ya atacaste esa celda! Selecciona otra.");
+            mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
             return;
         }
 
@@ -131,13 +133,12 @@ public class GameController implements Initializable {
         celdaSeleccionadaMaquina.setStyle("-fx-background-color: yellow; -fx-border-color: #b0b0b0;");
 
         btnAtacar.setDisable(false);
-        lblMensajeTurno.setText("Objetivo seleccionado. ¡Presiona ATACAR!");
     }
 
     @FXML
     private void handleAttack() {
         if (celdaSeleccionadaMaquina == null) {
-            lblMensajeTurno.setText("Error: Selecciona una celda antes de atacar.");
+            mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
             return;
         }
 
@@ -152,7 +153,7 @@ public class GameController implements Initializable {
 
             // 3. Revisar condición de victoria
             if (juego.haGanadoJugador()) {
-                mostrarMensajeFinal("¡GANASTE! Has hundido toda la flota enemiga.");
+                mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
                 return;
             }
 
@@ -232,9 +233,12 @@ public class GameController implements Initializable {
         }
     }
 
-    private void mostrarMensajeFinal(String mensaje) {
-        lblMensajeTurno.setText(mensaje);
-        btnAtacar.setDisable(true);
+    private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
+        Alert alert = new Alert(tipo);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensaje);
+        alert.showAndWait();
     }
 
     /* ---------- Métodos Existentes y Auxiliares ---------- */
