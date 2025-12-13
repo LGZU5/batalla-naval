@@ -60,20 +60,38 @@ public class Tablero {
     public ResultadoDisparo disparar(int fila, int columna) {
         Celda celda = celdas[fila][columna];
 
+        // --- Caso 1: La celda ya fue atacada (importante para prevenir re-ataques) ---
+        if (celda.getEstado() == EstadoCelda.TOCADA ||
+                celda.getEstado() == EstadoCelda.HUNDIDA ||
+                celda.getEstado() == EstadoCelda.AGUA_TOCADA) {
+            // Lanza una excepción si el atacante (la máquina) intenta atacar dos veces la misma celda
+            throw new IllegalStateException("La celda ya fue atacada.");
+        }
+
+        // --- Caso 2: Disparo al agua (no hay barco) ---
         if (!celda.tieneBarco()) {
-            celda.setEstado(EstadoCelda.TOCADA); // luego puedes diferenciar AGUA visualmente
+            // Si no tiene barco, el resultado es AGUA
+            celda.setEstado(EstadoCelda.AGUA_TOCADA); // <--- AHORA SE USA CORRECTAMENTE
             return ResultadoDisparo.AGUA;
         }
 
+        // --- Caso 3: Disparo a un barco ---
+        // Si llega aquí, es un barco que no ha sido atacado (estado BARCO)
         celda.setEstado(EstadoCelda.TOCADA);
         Barco barco = celda.getBarco();
 
+        // (Aquí falta la lógica para que el barco sepa que fue tocado,
+        // pero eso debería estar dentro de Barco o Celda).
+        // Asumiendo que el modelo ya marca el barco como tocado:
+
         if (barco.estaHundido()) {
+            // Si se hunde, marca todas las celdas del barco como HUNDIDA
             for (Celda c : barco.getCeldas()) {
                 c.setEstado(EstadoCelda.HUNDIDA);
             }
             return ResultadoDisparo.HUNDIDO;
         }
+
         return ResultadoDisparo.TOCADO;
     }
 }

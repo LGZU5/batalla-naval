@@ -82,6 +82,8 @@ public class GameController implements Initializable {
 
             // 3. Incializar y comenzar la MachineThread
             iniciarThreadMaquina();
+
+            actualizarMensajeTurno();
         } else {
             System.out.println("ERROR: Uno o ambos grids son nulos!");
         }
@@ -92,6 +94,20 @@ public class GameController implements Initializable {
         this.humano = juego.getJugador();
         this.maquina = juego.getMaquina();
         System.out.println("Referencias asignadas.");
+    }
+
+    private void actualizarMensajeTurno() {
+        if (juego.juegoTerminado()) {
+            lblMensajeTurno.setText("¡Juego Terminado!");
+            return;
+        }
+
+        if (juego.esTurnoJugador()) {
+            // Asumiendo que el Jugador Humano siempre debe seleccionar una celda
+            lblMensajeTurno.setText("Tu turno: Selecciona una casilla para atacar.");
+        } else {
+            lblMensajeTurno.setText("Turno de la Máquina: Esperando ataque...");
+        }
     }
 
     private void iniciarThreadMaquina() {
@@ -134,6 +150,8 @@ public class GameController implements Initializable {
         // Update machine board (shows player's attacks)
         actualizarTableroMaquina();
 
+        actualizarMensajeTurno();
+
         // Update turn message
         if (juego.esTurnoJugador()) {
             lblMensajeTurno.setText("Tu turno - Selecciona una casilla para atacar");
@@ -153,18 +171,26 @@ public class GameController implements Initializable {
 
                 EstadoCelda estado = tableroJugador.getCelda(fila, col).getEstado();
 
-                // Only update attacked cells
-                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
-                    Celda celda = tableroJugador.getCelda(fila, col);
+                // 1. Condición principal: Solo actualizamos si la celda ha sido atacada.
+                if (estado == EstadoCelda.TOCADA ||
+                        estado == EstadoCelda.HUNDIDA ||
+                        estado == EstadoCelda.AGUA_TOCADA) {
 
-                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
-                        // Sunk ship - paint red
+                    // 2. Lógica de repintado de IMPACTOS (Máquina al Jugador)
+
+                    if (estado == EstadoCelda.AGUA_TOCADA) {
+                        // La Máquina ha disparado al agua del jugador.
+                        cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;"); // AZUL
+                    } else if (estado == EstadoCelda.HUNDIDA) {
+                        // La Máquina ha hundido un barco (ROJO)
+                        // Si el barco está hundido, pintamos esa celda de rojo.
                         cell.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
                     } else if (estado == EstadoCelda.TOCADA) {
-                        // Hit - paint orange
+                        // La Máquina ha tocado un barco (NARANJA)
                         cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
                     }
                 }
+                // Si el estado es VACIA o BARCO, se omite y mantiene el color inicial (gris o el ShipCellView).
             }
         }
     }
@@ -183,12 +209,15 @@ public class GameController implements Initializable {
                 if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
                     Celda celda = tableroMaquina.getCelda(fila, col);
 
-                    if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
-                        // Sunk ship - paint all cells red
-                        pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
-                    } else if (estado == EstadoCelda.TOCADA) {
-                        // Hit - paint orange
-                        cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                    if (estado == EstadoCelda.AGUA_TOCADA) {
+                        cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
+                        if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
+                            // Sunk ship - paint all cells red
+                            pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
+                        } else if (estado == EstadoCelda.TOCADA) {
+                            // Hit - paint orange
+                            cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                        }
                     }
                 }
             }
@@ -250,10 +279,17 @@ public class GameController implements Initializable {
         int fila = pos[0];
         int col = pos[1];
 
-        // Verifica si la celda ya fue atacada
         EstadoCelda estadoActual = tableroMaquina.getCelda(fila, col).getEstado();
-        if (estadoActual == EstadoCelda.TOCADA || estadoActual == EstadoCelda.HUNDIDA) {
+
+        // 1. Verifica si la celda ya fue atacada (INCLUYENDO AGUA_TOCADA)
+        if (estadoActual == EstadoCelda.TOCADA ||
+                estadoActual == EstadoCelda.HUNDIDA ||
+                estadoActual == EstadoCelda.AGUA_TOCADA) { // <--- Inclusión de AGUA_TOCADA
+
             mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
+
+            // ¡IMPORTANTE! Si ya fue atacada y no se va a seleccionar,
+            // no debemos continuar con la lógica de selección/deselección que sigue.
             return;
         }
 
@@ -262,8 +298,23 @@ public class GameController implements Initializable {
             int[] prevPos = (int[]) celdaSeleccionadaMaquina.getUserData();
             EstadoCelda prevEstado = tableroMaquina.getCelda(prevPos[0], prevPos[1]).getEstado();
 
-            // Solo restaurar color si NO fue atacada
-            if (prevEstado != EstadoCelda.TOCADA && prevEstado != EstadoCelda.HUNDIDA) {
+            // RESTAURACIÓN CORREGIDA: Restauramos el color basado en el estado persistente.
+
+            // Si el estado previo era AGUA_TOCADA, TOCADA o HUNDIDA,
+            // restaurar al color que le corresponde.
+            if (prevEstado == EstadoCelda.AGUA_TOCADA) {
+                // Si la previa era AGUA_TOCADA, restaurar a AZUL
+                celdaSeleccionadaMaquina.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
+            }
+            else if (prevEstado == EstadoCelda.TOCADA) {
+                // Si la previa era TOCADA, restaurar a NARANJA
+                celdaSeleccionadaMaquina.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+            }
+            // Nota: HUNDIDA se maneja con pintarBarcoHundido y suele ser rojo.
+            // Aquí no necesitamos una condición HUNDIDA porque el hundimiento es permanente.
+
+            else {
+                // Si el estado previo era VACIA o BARCO (es decir, NO ATACADA), restaurar al GRIS base.
                 celdaSeleccionadaMaquina.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
             }
         }

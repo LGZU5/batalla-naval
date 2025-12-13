@@ -30,11 +30,6 @@ public class MaquinaThread extends Thread {
 
     /**
      * Constructs a new machine turn processing thread.
-     *
-     * @param juego the shared Juego instance
-     * @param estrategia the attack strategy to use
-     * @param uiRefresh callback to refresh the UI on FX thread
-     * @param uiCheckWinner callback to check for winner on FX thread
      */
     public MaquinaThread(Juego juego,
                          EstrategiaAtaque estrategia,
@@ -44,7 +39,6 @@ public class MaquinaThread extends Thread {
         this.estrategia = estrategia;
         this.uiRefresh = uiRefresh;
         this.uiCheckWinner = uiCheckWinner;
-        // Set as daemon so it doesn't prevent app from exiting
         setDaemon(true);
     }
 
@@ -56,6 +50,30 @@ public class MaquinaThread extends Thread {
         interrupt();
     }
 
+    // -------------------------------------------------------------------
+    // METODO AUXILIAR PARA GARANTIZAR LA SELECCIÓN DE CELDA
+    // -------------------------------------------------------------------
+
+    /**
+     * Busca la primera celda que está en estado VACIA o BARCO (es decir, sin atacar).
+     * Este es el mecanismo de respaldo si la estrategia aleatoria falla.
+     * @param tablero El tablero del jugador.
+     * @return Coordenadas [fila, columna] de una celda disponible, o null si el tablero está lleno.
+     */
+    private int[] buscarCeldaLibre(Tablero tablero) {
+        for (int f = 0; f < Tablero.SIZE; f++) {
+            for (int c = 0; c < Tablero.SIZE; c++) {
+                EstadoCelda estado = tablero.getCelda(f, c).getEstado();
+                if (estado == EstadoCelda.VACIA || estado == EstadoCelda.BARCO) {
+                    return new int[]{f, c};
+                }
+            }
+        }
+        return null; // No hay celdas libres
+    }
+
+    // -------------------------------------------------------------------
+
     /**
      * Main execution loop for the thread.
      * Continuously checks if it's the machine's turn and executes attacks.
@@ -65,13 +83,12 @@ public class MaquinaThread extends Thread {
         try {
             while (!stop) {
 
-                // 1. revisar turno de la maquina
+                // 1. Revisar turno de la maquina
                 boolean esTurnoMaquina;
                 synchronized (juego) {
                     esTurnoMaquina = !juego.esTurnoJugador();
                 }
 
-                // Si es turno del jugador, dormimos un poquito y seguimos
                 if (!esTurnoMaquina) {
                     try {
                         Thread.sleep(100);
@@ -100,18 +117,64 @@ public class MaquinaThread extends Thread {
                     }
 
                     Tablero tableroJugador = juego.getJugador().getTableroPosicion();
-                    int[] coordenadas = estrategia.seleccionarAtaque(tableroJugador);
+                    int fila, col;
 
-                    if (coordenadas == null) {
-                        System.err.println("ERROR: Machine has no valid moves!");
-                        break;
+                    // --- LÓGICA DE SELECCIÓN Y VALIDACIÓN (CORRECCIÓN CRÍTICA) ---
+                    int maxTries = 100; // Límite de intentos aleatorios
+                    int tries = 0;
+                    EstadoCelda estadoActual;
+                    boolean foundValidCoordinates = false;
+
+                    int[] coordenadas;
+
+                    do {
+                        coordenadas = estrategia.seleccionarAtaque(tableroJugador);
+
+                        if (coordenadas == null) {
+                            System.err.println("ERROR: Machine has no valid moves from strategy!");
+                            return;
+                        }
+
+                        fila = coordenadas[0];
+                        col = coordenadas[1];
+
+                        estadoActual = tableroJugador.getCelda(fila, col).getEstado();
+
+                        if (estadoActual == EstadoCelda.VACIA || estadoActual == EstadoCelda.BARCO) {
+                            foundValidCoordinates = true;
+                            break; // Se encontraron coordenadas aleatorias válidas.
+                        }
+
+                        tries++;
+                        if (tries >= maxTries) {
+
+                            // LÓGICA DE EMERGENCIA: Buscar la primera celda libre por iteración.
+                            System.err.println("Máquina falló en selección aleatoria. Buscando celda de emergencia...");
+                            int[] emergencia = buscarCeldaLibre(tableroJugador);
+
+                            if (emergencia != null) {
+                                fila = emergencia[0];
+                                col = emergencia[1];
+                                foundValidCoordinates = true;
+                            } else {
+                                System.err.println("ERROR: No quedan celdas libres para atacar.");
+                            }
+                            break; // Salir del do-while.
+                        }
+
+                    } while (!foundValidCoordinates);
+
+                    // Si no se encontraron coordenadas válidas (solo ocurre si no quedan celdas):
+                    if (!foundValidCoordinates) {
+                        System.out.println("Juego Finalizado - No quedan movimientos para la máquina.");
+                        continue;
                     }
+                    // --- FIN LÓGICA DE SELECCIÓN Y VALIDACIÓN ---
 
-                    int fila = coordenadas[0];
-                    int col = coordenadas[1];
 
                     System.out.println("Máquina atacando: (" + fila + ", " + col + ")");
 
+                    // El ataque a tablero.disparar() será válido, evitando la IllegalStateException.
                     resultado = juego.ejecutarAtaqueMaquina(fila, col);
 
                     // Notificar a la estrategia
@@ -125,12 +188,10 @@ public class MaquinaThread extends Thread {
                     uiRefresh.run();      // refrescar tableros
                     uiCheckWinner.run();  // llamar a verificarGanador() en el controller
                 });
-
             }
         } catch (Exception ex) {
             System.err.println("Error en MaquinaThread:");
             ex.printStackTrace();
         }
     }
-
 }
