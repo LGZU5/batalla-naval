@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="650.0" prefWidth="1000.0" styleClass="bg-home" stylesheets="@styles/styles.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="proyect.batallanaval.controllers.GameController">
+<BorderPane prefHeight="650.0" prefWidth="1000.0" styleClass="bg-home" stylesheets="@styles/styles.css" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="proyect.batallanaval.controllers.GameController">
 
     <top>
         <VBox alignment="CENTER">
@@ -49,8 +49,8 @@
 
     <bottom>
         <HBox alignment="CENTER" style="-fx-spacing: 20;">
-            <Button fx:id="btnCheck" mnemonicParsing="false" text="REVISION" />
-            <Button fx:id="btnAtacar" text="ATACAR" />
+            <Button fx:id="btnCheck" mnemonicParsing="false" styleClass="button-options" text="REVISION" />
+            <Button fx:id="btnAtacar" styleClass="button-play" text="ATACAR" />
             <padding>
                 <Insets bottom="20" top="20" />
             </padding>
