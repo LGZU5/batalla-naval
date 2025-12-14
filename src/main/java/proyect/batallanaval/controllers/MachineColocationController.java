@@ -24,15 +24,13 @@ import java.util.ResourceBundle;
 
 /**
  * Controller responsible for displaying the machine's ship placement board
- * before the game begins.This view is strictly observational: the user cannot
+ * before the game begins. This view is strictly observational: the user cannot
  * modify or interact with the grid.
  *
  * <p>
- * When initialized, the controller:
+ * When the shared {@link Juego} instance is injected via {@code setJuego}:
  * <ul>
- * <li>Retrieves or creates the shared {@link Juego} instance.</li>
- * <li>Accesses the machine's {@link Tablero} and {@link Flota}.</li>
- * <li>Generates a random fleet if one has not yet been created.</li>
+ * <li>It ensures the machine's fleet is generated if not already present.</li>
  * <li>Builds a 10×10 grid of non-interactive cells.</li>
  * <li>Renders the machine’s fleet visually on the board.</li>
  * </ul>
@@ -57,19 +55,24 @@ public class MachineColocationController implements Initializable {
     /**
      * Initializes the controller after the FXML view has been loaded.
      * <p>
-     * If the {@code Juego} instance has not been injected externally,
-     * a fallback game is created for testing purposes.
+     * This method is called automatically and is primarily used for setting up
+     * the initial state of the components before the {@code Juego} instance
+     * is available via {@code setJuego()}.
      * </p>
-     * This method prepares the machine's board, ensures its fleet is generated,
-     * builds the graphical grid, and paints the ships on it.
      *
      * @param url unused URL parameter (FXML requirement)
      * @param resourceBundle unused ResourceBundle parameter (FXML requirement)
      */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        // Initialization logic is deferred to setJuego, where model dependencies are met.
     }
 
+    /**
+     * Closes the current stage (the Machine Colocation View) when the "Continuar" button is pressed.
+     *
+     * @param event The action event triggered by the button click.
+     */
     @FXML
     public void Continuar(ActionEvent event) {
         Node source = (Node) event.getSource();
@@ -81,35 +84,45 @@ public class MachineColocationController implements Initializable {
      * Injects the shared {@link Juego} instance used across scenes.
      * <p>
      * This method must be called by the controller that loads this view
-     * to ensure both controllers operate on the same game state.
+     * to ensure both controllers operate on the same game state. It initializes
+     * the machine's fleet if needed and builds the visual board.
      * </p>
      *
      * @param juego the game instance to associate with this controller
+     * @throws NullPointerException if the provided {@code juego} or its internal machine/board objects are null.
      */
     public void setJuego(Juego juego) {
-        this.juego = juego;
-        this.maquina = juego.getMaquina();
-        this.tablero = maquina.getTableroPosicion();
-        this.flota = maquina.getFlota();
+        // Use a try-catch block to handle potential NullPointerExceptions if setup is incomplete
+        try {
+            this.juego = juego;
+            this.maquina = juego.getMaquina();
+            this.tablero = maquina.getTableroPosicion();
+            this.flota = maquina.getFlota();
 
-        System.out.println("MC - juego: " + System.identityHashCode(juego));
-        System.out.println("MC - flota máquina size AFTER generate: " + flota.getBarcos().size());
+            System.out.println("MC - juego: " + System.identityHashCode(juego));
+            System.out.println("MC - flota máquina size AFTER generate: " + flota.getBarcos().size());
 
-        if (!flota.estaCompleta()) {
-            GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
-            generador.generarFlotaAleatoria(flota, tablero);
-            System.out.println("Flota de la Máquina GENERADA aleatoriamente.");
-        } else {
-            System.out.println("Flota de la Máquina ya existía, usando flota previa.");
-        }
+            // 1. Ensure the machine's fleet is complete
+            if (!flota.estaCompleta()) {
+                GeneradorFlotaAleatoria generador = new GeneradorFlotaAleatoria();
+                generador.generarFlotaAleatoria(flota, tablero);
+                System.out.println("Flota de la Máquina GENERADA aleatoriamente.");
+            } else {
+                System.out.println("Flota de la Máquina ya existía, usando flota previa.");
+            }
 
-        // Inicializar y pintar la vista con el modelo final
-        if (gridTableroMaquina != null) {
-            inicializarGrid();
-            pintarFlotaEnTablero();
-            System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
-        } else {
-            System.err.println("ERROR: gridTableroMaquina es null.");
+            // 2. Initialize and paint the view with the final model
+            if (gridTableroMaquina != null) {
+                inicializarGrid();
+                pintarFlotaEnTablero();
+                System.out.println("Barcos en flota máquina: " + flota.getBarcos().size());
+            } else {
+                System.err.println("ERROR: gridTableroMaquina es null.");
+            }
+        } catch (NullPointerException e) {
+            System.err.println("ERROR: setJuego recibió un objeto nulo o la inicialización del juego falló: " + e.getMessage());
+            // Re-throw the standard unchecked exception for caller to address the setup failure
+            throw new NullPointerException("Juego o sus componentes (Maquina/Tablero/Flota) son nulos en setJuego.");
         }
     }
 
@@ -120,11 +133,15 @@ public class MachineColocationController implements Initializable {
      * the machine's territory.
      * <p>
      * Each cell is a {@link StackPane} with fixed dimensions.
-     * No event handlers (click, drag, etc.) are registered because
-     * this board is intended for visualization only.
+     * No event handlers are registered because this board is for visualization only.
      * </p>
      */
     private void inicializarGrid() {
+        if (gridTableroMaquina == null) {
+            System.err.println("Cannot initialize grid: gridTableroMaquina is null.");
+            return;
+        }
+
         gridTableroMaquina.getChildren().clear();
         gridTableroMaquina.getColumnConstraints().clear();
         gridTableroMaquina.getRowConstraints().clear();
@@ -164,12 +181,20 @@ public class MachineColocationController implements Initializable {
         gridTableroMaquina.setMaxSize(total, total);
     }
 
-    /* ---------- Pintar flota aleatoria de la máquina ---------- */
+    /* ---------- Paint random fleet of the machine ---------- */
     /**
      * Iterates through the machine's fleet and renders each ship visually
      * on the corresponding cells of the grid.
+     *
+     * @throws NullPointerException if the {@code flota} object is null when trying to access its ships.
      */
     private void pintarFlotaEnTablero() {
+        if (flota == null) {
+            System.err.println("ERROR: Cannot paint fleet, Flota object is null.");
+            // Re-throw the standard unchecked exception
+            throw new NullPointerException("Flota object is null during rendering.");
+        }
+
         for (Barco barco : flota.getBarcos()) {
             pintarBarco(barco);
         }
@@ -203,6 +228,8 @@ public class MachineColocationController implements Initializable {
      * @return the matching StackPane, or {@code null} if not found
      */
     private StackPane getCell(int fila, int col) {
+        if (gridTableroMaquina == null) return null;
+
         for (Node node : gridTableroMaquina.getChildren()) {
             Integer r = GridPane.getRowIndex(node);
             Integer c = GridPane.getColumnIndex(node);
