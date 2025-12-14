@@ -32,6 +32,23 @@ public class Juego {
                 + maquina.getFlota().getBarcos().size());
     }
 
+    public Juego(Jugador jugador, Maquina maquina) {
+        if (jugador == null || maquina == null) {
+            throw new IllegalArgumentException(
+                    "El jugador y la máquina no pueden ser nulos."
+            );
+        }
+
+        this.jugador = jugador;
+        this.maquina = maquina;
+        this.esTurnoJugador = true; // Por defecto, empieza el jugador
+
+        System.out.println("Juego reconstruido desde partida guardada");
+        System.out.println("Jugador: " + jugador.getNickname());
+        System.out.println("Barcos jugador: " + jugador.getFlota().getBarcos().size());
+        System.out.println("Barcos máquina: " + maquina.getFlota().getBarcos().size());
+    }
+
     public Jugador getJugador() {
         return jugador;
     }

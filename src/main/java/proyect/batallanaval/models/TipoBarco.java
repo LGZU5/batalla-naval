@@ -1,6 +1,8 @@
 package proyect.batallanaval.models;
 
-public enum TipoBarco {
+import java.io.Serializable;
+
+public enum TipoBarco implements Serializable {
     PORTAAVIONES(4),
     SUBMARINO(3),
     DESTRUCTOR(2),

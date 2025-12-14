@@ -1,6 +1,12 @@
 package proyect.batallanaval.models;
 
-public class Tablero {
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
+
+public class Tablero implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public static final int SIZE = 10;
     public static final int CELL_SIZE = 30;
@@ -93,5 +99,24 @@ public class Tablero {
         }
 
         return ResultadoDisparo.TOCADO;
+    }
+
+    private void readObject(ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+
+        in.defaultReadObject(); // Lee los campos normales (celdas[][])
+
+        // Reconstruir las listas de celdas de cada barco
+        for (int f = 0; f < SIZE; f++) {
+            for (int c = 0; c < SIZE; c++) {
+                Celda celda = celdas[f][c];
+
+                // Si la celda tiene un barco, reconstruir su lista
+                if (celda.tieneBarco()) {
+                    Barco barco = celda.getBarco();
+                    barco.agregarCelda(celda);
+                }
+            }
+        }
     }
 }

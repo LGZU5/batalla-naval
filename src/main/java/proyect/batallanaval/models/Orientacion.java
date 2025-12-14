@@ -1,6 +1,8 @@
 package proyect.batallanaval.models;
 
-public enum Orientacion {
+import java.io.Serializable;
+
+public enum Orientacion implements Serializable {
     HORIZONTAL,
     VERTICAL
 }

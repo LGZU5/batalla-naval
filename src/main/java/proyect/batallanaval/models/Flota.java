@@ -1,11 +1,18 @@
 package proyect.batallanaval.models;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Flota {
+public class Flota implements Serializable{
 
-    private final List<Barco> barcos = new ArrayList<>();
+    private static final long serialVersionUID = 1L;
+
+    private final List<Barco> barcos;
+
+    public Flota() {
+        this.barcos = new ArrayList<>();
+    }
 
     public List<Barco> getBarcos() { return barcos; }
 

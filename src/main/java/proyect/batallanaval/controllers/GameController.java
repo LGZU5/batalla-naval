@@ -19,7 +19,9 @@ import proyect.batallanaval.models.strategy.EstrategiaAtaque;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.HashSet;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 /**
  * Controller responsible for managing the main game view, displaying both
@@ -27,6 +29,8 @@ import java.util.ResourceBundle;
  * Funcionalidad enfocada únicamente en el ataque del jugador.
  */
 public class GameController implements Initializable {
+
+    private GestorPartida gestorPartida;
 
     // FXML ELEMENTS
     @FXML private GridPane playerGrid;
@@ -42,12 +46,9 @@ public class GameController implements Initializable {
     private Jugador humano;
     private Maquina maquina;
 
-    // MACHINE THREAD
     private MaquinaThread maquinaThread;
     private EstrategiaAtaque estrategiaMaquina;
 
-
-    // GAME STATE (Simplificado - solo para la vista)
     private StackPane celdaSeleccionadaMaquina;
     private int filaAtaque = -1;
     private int colAtaque = -1;
@@ -55,6 +56,9 @@ public class GameController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         System.out.println("Initialize llamado - esperando setJuego()");
+
+        this.gestorPartida = new GestorPartida();
+
         btnAtacar.setDisable(true);
         if (btnCheck != null) {
             btnCheck.setOnAction(event -> irAColocacionMaquina());
@@ -69,23 +73,98 @@ public class GameController implements Initializable {
         this.juego = juego;
         assignReferences();
 
+        int conBarco = 0;
+        for (int f = 0; f < Tablero.SIZE; f++) {
+            for (int c = 0; c < Tablero.SIZE; c++) {
+                if (humano.getTableroPosicion().getCelda(f, c).tieneBarco()) {
+                    conBarco++;
+                }
+            }
+        }
+        System.out.println("Celdas con barco en tablero jugador: " + conBarco);
+
         if (playerGrid != null && gridMaquina != null) {
             System.out.println("Grids existen, inicializando vistas...");
 
-            // 1. Tablero Jugador: Barcos visibles
-            inicializarVista(playerGrid, humano.getTableroPosicion(), humano.getFlota(), true);
-
-            // 2. Tablero Máquina: Celdas vacías, clickeables
-            inicializarVista(gridMaquina, maquina.getTableroPosicion(), maquina.getFlota(), false);
+            inicializarVistaConEstados(playerGrid, humano.getTableroPosicion(), humano.getFlota(), true);
+            inicializarVistaConEstados(gridMaquina, maquina.getTableroPosicion(), maquina.getFlota(), false);
 
             configurarManejadoresAtaque();
-
-            // 3. Incializar y comenzar la MachineThread
             iniciarThreadMaquina();
-
             actualizarMensajeTurno();
         } else {
             System.out.println("ERROR: Uno o ambos grids son nulos!");
+        }
+    }
+
+    private void inicializarVistaConEstados(GridPane grid, Tablero tablero, Flota flota, boolean isPlayerBoard) {
+        inicializarGridBase(grid);
+
+        if (isPlayerBoard && flota != null && !flota.getBarcos().isEmpty()) {
+            pintarFlotaEnTablero(flota, grid);
+        }
+
+        aplicarEstadosDeAtaque(grid, tablero, isPlayerBoard);
+    }
+
+    private void aplicarEstadosDeAtaque(GridPane grid, Tablero tablero, boolean isPlayerBoard) {
+        Set<Barco> barcosHundidosPintados = new HashSet<>();
+
+        for (Node node : grid.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                int fila = pos[0];
+                int col = pos[1];
+
+                Celda celda = tablero.getCelda(fila, col);
+                EstadoCelda estado = celda.getEstado();
+
+                switch (estado) {
+                    case AGUA_TOCADA:
+                        cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
+                        System.out.println("Aplicando AGUA_TOCADA en (" + fila + ", " + col + ")");
+                        break;
+
+                    case TOCADA:
+                        if (celda.tieneBarco() && !celda.getBarco().estaHundido()) {
+                            cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                            System.out.println("Aplicando TOCADA en (" + fila + ", " + col + ")");
+                        }
+                        break;
+
+                    case HUNDIDA:
+                        if (celda.tieneBarco()) {
+                            Barco barco = celda.getBarco();
+                            if (barco.estaHundido() && !barcosHundidosPintados.contains(barco)) {
+                                pintarBarcoHundido(cell, tablero, grid);
+                                barcosHundidosPintados.add(barco);
+                                System.out.println(" Aplicando HUNDIDA para barco " + barco.getTipo());
+                            }
+                        }
+                        break;
+
+                    case BARCO:
+                    case VACIA:
+                        break;
+                }
+            }
+        }
+
+        // Verificar barcos hundidos sin estado HUNDIDA
+        for (Node node : grid.getChildren()) {
+            if (node instanceof StackPane cell) {
+                int[] pos = (int[]) cell.getUserData();
+                Celda celda = tablero.getCelda(pos[0], pos[1]);
+
+                if (celda.tieneBarco()) {
+                    Barco barco = celda.getBarco();
+                    if (barco.estaHundido() && !barcosHundidosPintados.contains(barco)) {
+                        System.out.println(" Barco hundido sin estado HUNDIDA: " + barco.getTipo());
+                        pintarBarcoHundido(cell, tablero, grid);
+                        barcosHundidosPintados.add(barco);
+                    }
+                }
+            }
         }
     }
 
@@ -135,12 +214,20 @@ public class GameController implements Initializable {
         maquinaThread = new MaquinaThread(
                 juego,
                 estrategiaMaquina,
-                this::actualizarVistaCompleta,  // UI refresh callback
-                this::verificarGanador           // Winner check callback
+                this::actualizarVistaConGuardado,
+                this::verificarGanadorConLimpieza          // Winner check callback
         );
 
         maquinaThread.start();
         System.out.println("Thread de la máquina iniciado.");
+    }
+
+    private void actualizarVistaConGuardado() {
+        // Guardar automáticamente después del disparo de la máquina
+        gestorPartida.guardarPartida(humano, maquina);
+
+        // Actualizar vista normal
+        actualizarVistaCompleta();
     }
 
     private void actualizarVistaCompleta() {
@@ -157,6 +244,28 @@ public class GameController implements Initializable {
             lblMensajeTurno.setText("Tu turno - Selecciona una casilla para atacar");
         } else {
             lblMensajeTurno.setText("Turno de la máquina - Pensando...");
+        }
+    }
+
+    private void verificarGanadorConLimpieza() {
+        System.out.println("=== VERIFICANDO GANADOR ===");
+        System.out.println("Flota Máquina hundida: " + maquina.getFlota().estaFlotaHundida());
+        System.out.println("Flota Jugador hundida: " + humano.getFlota().estaFlotaHundida());
+
+        if (juego.haGanadoJugador()) {
+            System.out.println("¡JUGADOR GANÓ!");
+            detenerThreadMaquina();
+            // ✅ AGREGAR: Eliminar partida al ganar
+            gestorPartida.eliminarPartidaGuardada();
+            mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
+        } else if (juego.haGanadoMaquina()) {
+            System.out.println("¡MÁQUINA GANÓ!");
+            detenerThreadMaquina();
+            // ✅ AGREGAR: Eliminar partida al perder
+            gestorPartida.eliminarPartidaGuardada();
+            mostrarAlerta("DERROTA", "La máquina ha hundido toda tu flota. ¡Mejor suerte la próxima vez!", Alert.AlertType.INFORMATION);
+        } else {
+            System.out.println("Juego continúa...");
         }
     }
 
@@ -184,8 +293,7 @@ public class GameController implements Initializable {
                     } else if (estado == EstadoCelda.HUNDIDA) {
                         // La Máquina ha hundido un barco (ROJO)
                         // Si el barco está hundido, pintamos esa celda de rojo.
-                        cell.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
-                    } else if (estado == EstadoCelda.TOCADA) {
+                        pintarBarcoHundido(cell, tableroJugador, playerGrid);                    } else if (estado == EstadoCelda.TOCADA) {
                         // La Máquina ha tocado un barco (NARANJA)
                         cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
                     }
@@ -201,24 +309,16 @@ public class GameController implements Initializable {
         for (Node node : gridMaquina.getChildren()) {
             if (node instanceof StackPane cell) {
                 int[] pos = (int[]) cell.getUserData();
-                int fila = pos[0];
-                int col = pos[1];
+                int fila = pos[0], col = pos[1];
 
                 EstadoCelda estado = tableroMaquina.getCelda(fila, col).getEstado();
 
-                if (estado == EstadoCelda.TOCADA || estado == EstadoCelda.HUNDIDA) {
-                    Celda celda = tableroMaquina.getCelda(fila, col);
-
-                    if (estado == EstadoCelda.AGUA_TOCADA) {
-                        cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
-                        if (celda.tieneBarco() && celda.getBarco().estaHundido()) {
-                            // Sunk ship - paint all cells red
-                            pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
-                        } else if (estado == EstadoCelda.TOCADA) {
-                            // Hit - paint orange
-                            cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
-                        }
-                    }
+                if (estado == EstadoCelda.AGUA_TOCADA) {
+                    cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
+                } else if (estado == EstadoCelda.TOCADA) {
+                    cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
+                } else if (estado == EstadoCelda.HUNDIDA) {
+                    pintarBarcoHundido(cell, tableroMaquina, gridMaquina);
                 }
             }
         }
@@ -254,6 +354,7 @@ public class GameController implements Initializable {
             System.out.println("Thread de la máquina detenido.");
         }
     }
+
 
     /* ---------- Lógica de Ataque (Selección y Ejecución) ---------- */
 
@@ -340,12 +441,14 @@ public class GameController implements Initializable {
         try {
             // 1. Ejecutar el ataque
             ResultadoDisparo resultado = juego.ejecutarAtaqueJugador(filaAtaque, colAtaque);
+            gestorPartida.guardarPartida(humano, maquina);
 
             // 2. Actualizar la vista de la celda atacada
             actualizarVistaAtaque(celdaSeleccionadaMaquina, resultado, maquina.getTableroPosicion(), gridMaquina);
 
             // 3. Revisar condición de victoria
             if (juego.haGanadoJugador()) {
+                gestorPartida.eliminarPartidaGuardada();
                 mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
                 return;
             }
@@ -409,22 +512,22 @@ public class GameController implements Initializable {
             Barco barcoHundido = celdaModelo.getBarco();
 
             if (barcoHundido.estaHundido()) {
-                System.out.println("Pintando barco hundido: " + barcoHundido.getTipo());
-                System.out.println("Celdas del barco: " + barcoHundido.getCeldas().size());
+                System.out.println(" Pintando barco hundido: " + barcoHundido.getTipo());
+                System.out.println("   Celdas del barco: " + barcoHundido.getCeldas().size());
 
-                // Pintar TODAS las celdas del barco en rojo
                 barcoHundido.getCeldas().forEach(c -> {
                     StackPane cellView = getCell(c.getColumna(), c.getFila(), grid);
                     if (cellView != null) {
                         cellView.setStyle("-fx-background-color: red; -fx-border-color: #b0b0b0;");
-                        System.out.println("  Pintando celda: (" + c.getFila() + ", " + c.getColumna() + ") en ROJO");
+                        System.out.println("   Celda (" + c.getFila() + ", " + c.getColumna() + ") → ROJO");
                     } else {
-                        System.out.println("  ERROR: No se encontró la celda visual para (" + c.getFila() + ", " + c.getColumna() + ")");
+                        System.out.println("   No se encontró celda (" + c.getFila() + ", " + c.getColumna() + ")");
                     }
                 });
             }
         }
     }
+
 
     private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
         Alert alert = new Alert(tipo);
