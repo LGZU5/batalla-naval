@@ -9,4 +9,6 @@ module proyect.batallanaval {
     exports proyect.batallanaval;
     opens proyect.batallanaval.controllers to javafx.fxml;
     exports proyect.batallanaval.controllers;
+    exports proyect.batallanaval.exceptions;
+    opens proyect.batallanaval.exceptions to javafx.fxml;
 }

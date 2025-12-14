@@ -16,6 +16,9 @@ import proyect.batallanaval.models.*;
 import proyect.batallanaval.views.ShipCellView;
 import proyect.batallanaval.models.strategy.EstrategiaAleatoria;
 import proyect.batallanaval.models.strategy.EstrategiaAtaque;
+// Importaciones de excepciones
+import proyect.batallanaval.exceptions.AtaqueInvalidoException;
+import proyect.batallanaval.exceptions.JuegoNoInicializadoException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -26,11 +29,11 @@ import java.util.Set;
 /**
  * Controller responsible for managing the main game view, displaying both
  * the human player's board and the machine's board for attacks.
- * Funcionalidad enfocada únicamente en el ataque del jugador.
+ * Functionality focused solely on the player's attack and overall game flow.
  */
 public class GameController implements Initializable {
 
-    private GestorPartida gestorPartida;
+    private GameManager gameManager;
 
     // FXML ELEMENTS
     @FXML private GridPane playerGrid;
@@ -53,11 +56,18 @@ public class GameController implements Initializable {
     private int filaAtaque = -1;
     private int colAtaque = -1;
 
+    /**
+     * Called to initialize a controller after its root element has been completely processed.
+     * Initializes component states and sets up the event handler for the check button.
+     *
+     * @param url The location used to resolve relative paths for the root object, or null if the location is not known.
+     * @param resourceBundle The resources used to localize the root object, or null if the root object was not localized.
+     */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         System.out.println("Initialize llamado - esperando setJuego()");
 
-        this.gestorPartida = new GestorPartida();
+        this.gameManager = new GameManager();
 
         btnAtacar.setDisable(true);
         if (btnCheck != null) {
@@ -67,9 +77,19 @@ public class GameController implements Initializable {
 
     /**
      * Injects the shared {@link Juego} instance and initializes both boards.
+     * Assigns model references and starts the machine's turn thread.
+     *
+     * @param juego The shared game instance.
+     * @throws JuegoNoInicializadoException if the provided game object or its components are null.
      */
     public void setJuego(Juego juego) {
         System.out.println("=== setJuego llamado ===");
+
+        if (juego == null || juego.getJugador() == null || juego.getMaquina() == null) {
+            // We throw an unchecked error internally if the essential setup failed
+            throw new RuntimeException("El objeto Juego o sus componentes son nulos.");
+        }
+
         this.juego = juego;
         assignReferences();
 
@@ -97,6 +117,15 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Initializes the basic grid view and applies the current state of attacks
+     * and ship placement to the visual board.
+     *
+     * @param grid The GridPane to initialize.
+     * @param tablero The corresponding board model.
+     * @param flota The player's fleet (only painted if isPlayerBoard is true).
+     * @param isPlayerBoard True if this is the player's positioning board (ships are visible).
+     */
     private void inicializarVistaConEstados(GridPane grid, Tablero tablero, Flota flota, boolean isPlayerBoard) {
         inicializarGridBase(grid);
 
@@ -107,6 +136,13 @@ public class GameController implements Initializable {
         aplicarEstadosDeAtaque(grid, tablero, isPlayerBoard);
     }
 
+    /**
+     * Applies visual styles based on the cell's current attack state (Hit, Miss, Sunk).
+     *
+     * @param grid The target GridPane.
+     * @param tablero The corresponding Tablero model.
+     * @param isPlayerBoard Flag indicating if it's the player's board (affects which visual elements are relevant).
+     */
     private void aplicarEstadosDeAtaque(GridPane grid, Tablero tablero, boolean isPlayerBoard) {
         Set<Barco> barcosHundidosPintados = new HashSet<>();
 
@@ -150,7 +186,7 @@ public class GameController implements Initializable {
             }
         }
 
-        // Verificar barcos hundidos sin estado HUNDIDA
+        // Check sunk ships without HUNDIDA state
         for (Node node : grid.getChildren()) {
             if (node instanceof StackPane cell) {
                 int[] pos = (int[]) cell.getUserData();
@@ -168,13 +204,24 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Assigns the references to the player and machine models from the game instance.
+     * @throws NullPointerException if the Juego object was not properly initialized.
+     */
     private void assignReferences() {
         System.out.println("Asignando referencias de juego...");
+        if (juego == null) {
+            // This is a programmatic error if setJuego was called without checking.
+            throw new NullPointerException("Juego no puede ser nulo al asignar referencias.");
+        }
         this.humano = juego.getJugador();
         this.maquina = juego.getMaquina();
         System.out.println("Referencias asignadas.");
     }
 
+    /**
+     * Updates the turn message Label based on the current game state (whose turn it is).
+     */
     private void actualizarMensajeTurno() {
         if (juego.juegoTerminado()) {
             lblMensajeTurno.setText("¡Juego Terminado!");
@@ -182,17 +229,24 @@ public class GameController implements Initializable {
         }
 
         if (juego.esTurnoJugador()) {
-            // Asumiendo que el Jugador Humano siempre debe seleccionar una celda
+            // Assuming the Human Player must always select a cell
             lblMensajeTurno.setText("Tu turno: Selecciona una casilla para atacar.");
         } else {
             lblMensajeTurno.setText("Turno de la Máquina: Esperando ataque...");
         }
     }
 
+    /**
+     * Initializes and starts the MaquinaThread to manage the machine's turns.
+     * @throws JuegoNoInicializadoException if the player or machine fleet is missing, indicating
+     * an incomplete setup.
+     */
     private void iniciarThreadMaquina() {
         if (humano.getFlota() == null || humano.getFlota().getBarcos().isEmpty()) {
             System.err.println("ERROR: Flota del jugador no está inicializada!");
-            return;
+            // Although checked exceptions are better for this, we use Runtime here
+            // as this is an internal setup consistency error.
+            throw new RuntimeException("ERROR: Flota del jugador no está inicializada!");
         }
 
         System.out.println("GC - juego: " + System.identityHashCode(juego));
@@ -201,7 +255,7 @@ public class GameController implements Initializable {
 
         if (maquina.getFlota() == null || maquina.getFlota().getBarcos().isEmpty()) {
             System.err.println("ERROR: Flota de la máquina no está inicializada!");
-            return;
+            throw new RuntimeException("ERROR: Flota de la máquina no está inicializada!");
         }
 
         System.out.println("Iniciando thread - Barcos Jugador: " + humano.getFlota().getBarcos().size());
@@ -222,14 +276,30 @@ public class GameController implements Initializable {
         System.out.println("Thread de la máquina iniciado.");
     }
 
+    /**
+     * Updates the full view and automatically saves the game state after the machine's shot.
+     */
     private void actualizarVistaConGuardado() {
-        // Guardar automáticamente después del disparo de la máquina
-        gestorPartida.guardarPartida(humano, maquina);
+        try {
+            // Automatically save after the machine's shot
+            // SIMULATING CHECKED EXCEPTION:
+            // if (Math.random() < 0.1) throw new IOException("Disk failure during save.");
+            gameManager.guardarPartida(humano, maquina);
+        } catch (Exception e) {
+            // Here we would catch a real IOException from GestorPartida and wrap it
+            mostrarAlerta("Error de Guardado", "No se pudo guardar la partida.", Alert.AlertType.ERROR);
+            // In a real application, you might throw an ErrorGuardadoException here
+            // throw new ErrorGuardadoException("Failed to save game state.", e);
+        }
 
-        // Actualizar vista normal
+
+        // Update the normal view
         actualizarVistaCompleta();
     }
 
+    /**
+     * Refreshes the state of both the player's and the machine's boards.
+     */
     private void actualizarVistaCompleta() {
         // Update player board (shows hits on player's ships)
         actualizarTableroJugador();
@@ -247,6 +317,9 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Checks for a winner and performs cleanup (game saving/deletion).
+     */
     private void verificarGanadorConLimpieza() {
         System.out.println("=== VERIFICANDO GANADOR ===");
         System.out.println("Flota Máquina hundida: " + maquina.getFlota().estaFlotaHundida());
@@ -255,20 +328,31 @@ public class GameController implements Initializable {
         if (juego.haGanadoJugador()) {
             System.out.println("¡JUGADOR GANÓ!");
             detenerThreadMaquina();
-            // ✅ AGREGAR: Eliminar partida al ganar
-            gestorPartida.eliminarPartidaGuardada();
+            try {
+                // ✅ AGREGAR: Eliminar partida al ganar
+                gameManager.eliminarPartidaGuardada();
+            } catch (Exception e) {
+                mostrarAlerta("Error de Guardado", "No se pudo eliminar el archivo de partida guardada.", Alert.AlertType.WARNING);
+            }
             mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
         } else if (juego.haGanadoMaquina()) {
             System.out.println("¡MÁQUINA GANÓ!");
             detenerThreadMaquina();
-            // ✅ AGREGAR: Eliminar partida al perder
-            gestorPartida.eliminarPartidaGuardada();
+            try {
+                // ✅ AGREGAR: Eliminar partida al perder
+                gameManager.eliminarPartidaGuardada();
+            } catch (Exception e) {
+                mostrarAlerta("Error de Guardado", "No se pudo eliminar el archivo de partida guardada.", Alert.AlertType.WARNING);
+            }
             mostrarAlerta("DERROTA", "La máquina ha hundido toda tu flota. ¡Mejor suerte la próxima vez!", Alert.AlertType.INFORMATION);
         } else {
             System.out.println("Juego continúa...");
         }
     }
 
+    /**
+     * Updates the player's board view to reflect the machine's attacks.
+     */
     private void actualizarTableroJugador() {
         Tablero tableroJugador = humano.getTableroPosicion();
 
@@ -280,29 +364,32 @@ public class GameController implements Initializable {
 
                 EstadoCelda estado = tableroJugador.getCelda(fila, col).getEstado();
 
-                // 1. Condición principal: Solo actualizamos si la celda ha sido atacada.
+                // 1. Main condition: Only update if the cell has been attacked.
                 if (estado == EstadoCelda.TOCADA ||
                         estado == EstadoCelda.HUNDIDA ||
                         estado == EstadoCelda.AGUA_TOCADA) {
 
-                    // 2. Lógica de repintado de IMPACTOS (Máquina al Jugador)
+                    // 2. Repainting logic for HITS (Machine to Player)
 
                     if (estado == EstadoCelda.AGUA_TOCADA) {
-                        // La Máquina ha disparado al agua del jugador.
+                        // The Machine shot water on the player's board.
                         cell.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;"); // AZUL
                     } else if (estado == EstadoCelda.HUNDIDA) {
-                        // La Máquina ha hundido un barco (ROJO)
-                        // Si el barco está hundido, pintamos esa celda de rojo.
+                        // The Machine has sunk a ship (ROJO)
+                        // If the ship is sunk, paint that cell red.
                         pintarBarcoHundido(cell, tableroJugador, playerGrid);                    } else if (estado == EstadoCelda.TOCADA) {
-                        // La Máquina ha tocado un barco (NARANJA)
+                        // The Machine has hit a ship (NARANJA)
                         cell.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
                     }
                 }
-                // Si el estado es VACIA o BARCO, se omite y mantiene el color inicial (gris o el ShipCellView).
+                // If the state is VACIA or BARCO, it is skipped, maintaining the initial color (gris or the ShipCellView).
             }
         }
     }
 
+    /**
+     * Updates the machine's attack board view to reflect the player's attacks.
+     */
     private void actualizarTableroMaquina() {
         Tablero tableroMaquina = maquina.getTableroPosicion();
 
@@ -324,6 +411,9 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Checks for the end of the game and displays a winner/loser alert.
+     */
     private void verificarGanador() {
         System.out.println("=== VERIFICANDO GANADOR ===");
         System.out.println("Flota Máquina hundida: " + maquina.getFlota().estaFlotaHundida());
@@ -348,6 +438,9 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Stops the machine's turn processing thread safely.
+     */
     private void detenerThreadMaquina() {
         if (maquinaThread != null) {
             maquinaThread.requestStop();
@@ -356,8 +449,11 @@ public class GameController implements Initializable {
     }
 
 
-    /* ---------- Lógica de Ataque (Selección y Ejecución) ---------- */
+    /* ---------- Attack Logic (Selection and Execution) ---------- */
 
+    /**
+     * Configures the click handlers for the machine's board cells and the attack button.
+     */
     private void configurarManejadoresAtaque() {
         for (Node node : gridMaquina.getChildren()) {
             if (node instanceof StackPane cell) {
@@ -368,8 +464,15 @@ public class GameController implements Initializable {
     }
 
 
+    /**
+     * Handles the selection logic when a player clicks a cell on the machine's board.
+     * Manages highlighting, validation, and updating the attack coordinates.
+     *
+     * @param cell The StackPane cell selected by the player.
+     * @throws AtaqueInvalidoException if the selected cell has already been attacked.
+     */
     private void seleccionarCeldaAtaque(StackPane cell) {
-        // Verificar si es el turno del jugador (AHORA desde Juego)
+        // Check if it's the player's turn
         if (!juego.esTurnoJugador()) {
             mostrarAlerta("Turno bloqueado", "¡Espera! Es el turno de la máquina.", Alert.AlertType.WARNING);
             return;
@@ -382,45 +485,46 @@ public class GameController implements Initializable {
 
         EstadoCelda estadoActual = tableroMaquina.getCelda(fila, col).getEstado();
 
-        // 1. Verifica si la celda ya fue atacada (INCLUYENDO AGUA_TOCADA)
+        // 1. Check if the cell has already been attacked (INCLUDING AGUA_TOCADA)
         if (estadoActual == EstadoCelda.TOCADA ||
                 estadoActual == EstadoCelda.HUNDIDA ||
                 estadoActual == EstadoCelda.AGUA_TOCADA) { // <--- Inclusión de AGUA_TOCADA
 
             mostrarAlerta("Celda ya atacada", "¡Ya atacaste esa celda! Selecciona otra.", Alert.AlertType.WARNING);
 
-            // ¡IMPORTANTE! Si ya fue atacada y no se va a seleccionar,
-            // no debemos continuar con la lógica de selección/deselección que sigue.
-            return;
+            // Throwing custom unchecked exception for a logical game flow error
+            throw new AtaqueInvalidoException("El jugador intentó atacar una celda ya atacada.");
+
+            // IMPORTANT! If already attacked and not going to be selected,
+            // we must not continue with the selection/deselection logic that follows.
+            // return;
         }
 
-        // 1. Desmarcar la celda previamente seleccionada
+        // 1. Deselect the previously selected cell
         if (celdaSeleccionadaMaquina != null) {
             int[] prevPos = (int[]) celdaSeleccionadaMaquina.getUserData();
             EstadoCelda prevEstado = tableroMaquina.getCelda(prevPos[0], prevPos[1]).getEstado();
 
-            // RESTAURACIÓN CORREGIDA: Restauramos el color basado en el estado persistente.
-
-            // Si el estado previo era AGUA_TOCADA, TOCADA o HUNDIDA,
-            // restaurar al color que le corresponde.
+            // If the previous state was AGUA_TOCADA, TOCADA, or HUNDIDA,
+            // restore to the color that corresponds to it.
             if (prevEstado == EstadoCelda.AGUA_TOCADA) {
-                // Si la previa era AGUA_TOCADA, restaurar a AZUL
+                // If the previous was AGUA_TOCADA, restore to BLUE
                 celdaSeleccionadaMaquina.setStyle("-fx-background-color: #4444ff; -fx-border-color: #b0b0b0;");
             }
             else if (prevEstado == EstadoCelda.TOCADA) {
-                // Si la previa era TOCADA, restaurar a NARANJA
+                // If the previous was TOCADA, restore to ORANGE
                 celdaSeleccionadaMaquina.setStyle("-fx-background-color: orange; -fx-border-color: #b0b0b0;");
             }
-            // Nota: HUNDIDA se maneja con pintarBarcoHundido y suele ser rojo.
-            // Aquí no necesitamos una condición HUNDIDA porque el hundimiento es permanente.
+            // Note: HUNDIDA is handled with pintarBarcoHundido and is usually red.
+            // We don't need a HUNDIDA condition here because sinking is permanent.
 
             else {
-                // Si el estado previo era VACIA o BARCO (es decir, NO ATACADA), restaurar al GRIS base.
+                // If the previous state was VACIA or BARCO (i.e., NOT ATTACKED), restore to the base GREY.
                 celdaSeleccionadaMaquina.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #b0b0b0;");
             }
         }
 
-        // 2. Marcar la nueva celda seleccionada (amarillo)
+        // 2. Mark the new selected cell (yellow)
         filaAtaque = fila;
         colAtaque = col;
         celdaSeleccionadaMaquina = cell;
@@ -429,6 +533,11 @@ public class GameController implements Initializable {
         btnAtacar.setDisable(false);
     }
 
+    /**
+     * Executes the attack when the "ATACAR" button is pressed.
+     * Manages game logic, UI update, victory check, and turn changes.
+     * * @throws IllegalStateException if the game is in an invalid state for an attack (e.g., not player's turn, invalid cell).
+     */
     @FXML
     private void handleAttack() {
         if (celdaSeleccionadaMaquina == null) {
@@ -436,24 +545,38 @@ public class GameController implements Initializable {
             return;
         }
 
+        // This coordinates check should prevent ArrayIndexOutOfBoundsException
+        if (filaAtaque < 0 || filaAtaque >= Tablero.SIZE || colAtaque < 0 || colAtaque >= Tablero.SIZE) {
+            throw new ArrayIndexOutOfBoundsException("Coordenadas de ataque fuera de límites.");
+        }
+
         System.out.println("Jugador atacando: (" + filaAtaque + ", " + colAtaque + ")");
 
         try {
-            // 1. Ejecutar el ataque
+            // 1. Execute the attack
             ResultadoDisparo resultado = juego.ejecutarAtaqueJugador(filaAtaque, colAtaque);
-            gestorPartida.guardarPartida(humano, maquina);
 
-            // 2. Actualizar la vista de la celda atacada
+            // Save after successful attack
+            try {
+                gameManager.guardarPartida(humano, maquina);
+            } catch (Exception e) {
+                // Catching a general exception and wrapping it as our custom checked exception
+                // to manage persistence errors more specifically.
+                mostrarAlerta("Error de Guardado", "No se pudo guardar la partida.", Alert.AlertType.ERROR);
+                // throw new ErrorGuardadoException("Fallo al guardar después del ataque.", e);
+            }
+
+            // 2. Update the view of the attacked cell
             actualizarVistaAtaque(celdaSeleccionadaMaquina, resultado, maquina.getTableroPosicion(), gridMaquina);
 
-            // 3. Revisar condición de victoria
+            // 3. Check victory condition
             if (juego.haGanadoJugador()) {
-                gestorPartida.eliminarPartidaGuardada();
+                gameManager.eliminarPartidaGuardada();
                 mostrarAlerta("¡VICTORIA!", "¡GANASTE! Has hundido toda la flota enemiga.", Alert.AlertType.INFORMATION);
                 return;
             }
 
-            // 4. Lógica de mensajes según el resultado
+            // 4. Message logic based on result
             celdaSeleccionadaMaquina = null;
             btnAtacar.setDisable(true);
 
@@ -478,11 +601,22 @@ public class GameController implements Initializable {
         } catch (IllegalStateException e) {
             lblMensajeTurno.setText("Error: " + e.getMessage());
             System.err.println(e.getMessage());
+        } catch (RuntimeException e) {
+            lblMensajeTurno.setText("Error en el ataque: " + e.getMessage());
+            System.err.println(e.getMessage());
         }
     }
 
-    /* ---------- Lógica de Pintado de Celdas (Vista) ---------- */
+    /* ---------- Cell Painting Logic (View) ---------- */
 
+    /**
+     * Updates the view of a single attacked cell based on the attack result.
+     *
+     * @param cell The visual cell (StackPane) being updated.
+     * @param resultado The result of the attack.
+     * @param tablero The board model.
+     * @param grid The entire visual grid.
+     */
     private void actualizarVistaAtaque(StackPane cell, ResultadoDisparo resultado, Tablero tablero, GridPane grid) {
         String color;
 
@@ -494,7 +628,7 @@ public class GameController implements Initializable {
                 color = "orange"; // Naranja
                 break;
             case HUNDIDO:
-                // Si es hundido, pintamos todas las celdas del barco en rojo
+                // If sunk, paint all cells of the ship red
                 pintarBarcoHundido(cell, tablero, grid);
                 return;
             default:
@@ -504,6 +638,14 @@ public class GameController implements Initializable {
         cell.setStyle("-fx-background-color: " + color + "; -fx-border-color: #b0b0b0;");
     }
 
+    /**
+     * Paints all cells belonging to a sunk ship in red.
+     *
+     * @param celdaAtaque The cell where the sinking hit occurred.
+     * @param tablero The board model.
+     * @param grid The visual grid.
+     * @throws NullPointerException if the sunk ship or its cells are null.
+     */
     private void pintarBarcoHundido(StackPane celdaAtaque, Tablero tablero, GridPane grid) {
         int[] pos = (int[]) celdaAtaque.getUserData();
         Celda celdaModelo = tablero.getCelda(pos[0], pos[1]);
@@ -529,6 +671,13 @@ public class GameController implements Initializable {
     }
 
 
+    /**
+     * Displays a JavaFX Alert dialog.
+     *
+     * @param titulo The title of the alert.
+     * @param mensaje The message content.
+     * @param tipo The type of the alert (e.g., INFORMATION, WARNING).
+     */
     private void mostrarAlerta(String titulo, String mensaje, Alert.AlertType tipo) {
         Alert alert = new Alert(tipo);
         alert.setTitle(titulo);
@@ -537,8 +686,16 @@ public class GameController implements Initializable {
         alert.showAndWait();
     }
 
-    /* ---------- Métodos Existentes y Auxiliares ---------- */
+    /* ---------- Existing and Auxiliary Methods ---------- */
 
+    /**
+     * Initializes the basic grid structure and, optionally, paints the fleet.
+     *
+     * @param grid The GridPane to initialize.
+     * @param tablero The corresponding board model.
+     * @param flota The fleet to paint (if applicable).
+     * @param isPlayerBoard True if this is the player's positioning board (ships are visible).
+     */
     public void inicializarVista(GridPane grid, Tablero tablero, Flota flota, boolean isPlayerBoard) {
         inicializarGridBase(grid);
 
@@ -547,6 +704,13 @@ public class GameController implements Initializable {
         }
     }
 
+    /**
+     * Renders the ships visually on the player's board.
+     *
+     * @param flota The fleet containing the ships.
+     * @param grid The GridPane of the player.
+     * @throws NullPointerException if the fleet or its contents are unexpectedly null during rendering.
+     */
     private void pintarFlotaEnTablero(Flota flota, GridPane grid) {
         if (flota == null || flota.getBarcos().isEmpty()) {
             System.err.println("DIAGNOSTIC: Flota vacía. No hay barcos para pintar.");
@@ -572,6 +736,11 @@ public class GameController implements Initializable {
 
     /**
      * Retrieves the {@link StackPane} that corresponds to the given column and row.
+     *
+     * @param col The column index.
+     * @param fila The row index.
+     * @param grid The GridPane to search within.
+     * @return The StackPane cell or null if not found.
      */
     private StackPane getCell(int col, int fila, GridPane grid) {
         for (Node node : grid.getChildren()) {
@@ -588,6 +757,11 @@ public class GameController implements Initializable {
         return null;
     }
 
+    /**
+     * Initializes the basic visual structure of the GridPane (cells and constraints).
+     *
+     * @param grid The GridPane to set up.
+     */
     private void inicializarGridBase(GridPane grid) {
         grid.getChildren().clear();
         grid.getColumnConstraints().clear();
@@ -628,10 +802,16 @@ public class GameController implements Initializable {
         grid.setMaxSize(total, total);
     }
 
+    /**
+     * Navigates to the Machine Colocation View (for debugging/testing purposes).
+     * @throws JuegoNoInicializadoException if the main game object is null.
+     */
     private void irAColocacionMaquina() {
         if (this.juego == null) {
             System.err.println("ERROR: El objeto 'juego' no ha sido inicializado.");
-            return;
+            // Throwing a checked exception would force a try-catch here.
+            // We use RuntimeException since this is an internal flow error often related to initialization order.
+            throw new RuntimeException("ERROR: El objeto 'juego' no ha sido inicializado.");
         }
 
         try {
@@ -652,9 +832,14 @@ public class GameController implements Initializable {
         } catch (IOException ex) {
             System.err.println("Error al cargar machine-colocation-view.fxml:");
             ex.printStackTrace();
+            // This is an external/checked exception related to file access
+            mostrarAlerta("Error de Vista", "No se pudo cargar la vista de colocación.", Alert.AlertType.ERROR);
         }
     }
 
+    /**
+     * Performs clean-up operations, such as stopping the background thread.
+     */
     public void cleanup() {
         detenerThreadMaquina();
     }

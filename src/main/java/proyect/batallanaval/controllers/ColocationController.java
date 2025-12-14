@@ -147,7 +147,7 @@ public class ColocationController implements Initializable {
         gridTablero.setMaxSize(total, total);
     }
 
-    /* ---------- Flota inicial ya colocada ---------- */
+    /* ---------- Initial fleet already deployed ---------- */
     /**
      * Places the initial fleet arrangement on the board.
      * <p>
@@ -191,7 +191,7 @@ public class ColocationController implements Initializable {
         pintarBarco(barco);
     }
 
-    /* ---------- Pintado y selección ---------- */
+    /* ---------- Painted and selection ---------- */
 
     /**
      * Renders a ship on the grid according to its current cells in the model.
@@ -380,33 +380,33 @@ public class ColocationController implements Initializable {
             return false;
         }
 
-        //List for new positions of the ship
+        // List for new positions of the ship
         List<Celda> nuevasCeldas = new ArrayList<>();
 
         for (Celda c : actuales) {
-            //Does the math for the new position of the cell by adding the deltas
+            // Does the math for the new position of the cell by adding the deltas
             int nuevaFila = c.getFila() + deltaFila;
             int nuevaCol  = c.getColumna() + deltaCol;
 
-            //Verifies that the new position is between the limits
+            // Verifies that the new position is between the limits
             if (nuevaFila < 0 || nuevaFila >= Tablero.SIZE
                     || nuevaCol < 0 || nuevaCol >= Tablero.SIZE) {
                 return false;
             }
 
-            //Obtains new destination
+            // Obtains new destination
             Celda destino = tablero.getCelda(nuevaFila, nuevaCol);
 
-            //Detects collisions
+            // Detects collisions
             if (destino.tieneBarco() && !actuales.contains(destino)) {
                 return false;
             }
 
-            //If the cell is valid it gets added to the list of new cells
+            // If the cell is valid it gets added to the list of new cells
             nuevasCeldas.add(destino);
         }
 
-        //Cleans the model and the old view
+        // Cleans the model and the old view
         for (Celda c : actuales) {
             StackPane cellView = getCell(c.getFila(), c.getColumna());
             if (cellView != null) {
@@ -417,7 +417,7 @@ public class ColocationController implements Initializable {
         }
         barco.getCeldas().clear();
 
-        //Puts the ship in the new position
+        // Puts the ship in the new position
         for (Celda destino : nuevasCeldas) {
             destino.setBarco(barco);
             destino.setEstado(EstadoCelda.BARCO);
@@ -460,7 +460,7 @@ public class ColocationController implements Initializable {
         }
     }
 
-    /* ---------- Botones ---------- */
+    /* ---------- Buttons ---------- */
     /**
      * Configures the behavior of the rotation and play buttons.
      * <ul>
@@ -543,14 +543,12 @@ public class ColocationController implements Initializable {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/proyect/batallanaval/machine-colocation-view.fxml"));
             Parent root = loader.load();
 
-            // --- INYECCIÓN CRÍTICA RESTAURADA ---
             MachineColocationController machineController = loader.getController();
-            machineController.setJuego(this.juego); // Pasa el objeto 'juego' CON la flota del jugador
-            // ------------------------------------
+            machineController.setJuego(this.juego); // Pass the 'juego' object WITH the player's fleet
 
             Stage stage = (Stage) btnJugar.getScene().getWindow();
             stage.setScene(new Scene(root));
-            stage.show(); // Se debe llamar a show() para actualizar la escena
+            stage.show(); // You must call show() to update the scene
 
             System.out.println("Transición a Colocación Máquina exitosa.");
         } catch (IOException ex) {
@@ -577,7 +575,7 @@ public class ColocationController implements Initializable {
         List<Celda> celdasActuales = new ArrayList<>(barco.getCeldas());
 
         for (int i = 0; i < longitud; i++) {
-            //If horizontal increases columns, if vertical increases rows
+            // If horizontal increases columns, if vertical increases rows
             int f = (nuevaOrientacion == Orientacion.HORIZONTAL) ? filaOrigen : filaOrigen + i;
             int c = (nuevaOrientacion == Orientacion.HORIZONTAL) ? colOrigen + i : colOrigen;
 
@@ -590,7 +588,7 @@ public class ColocationController implements Initializable {
 
             boolean esMismaCeldaDelBarco = celdasActuales.contains(destino);
             if (destino.tieneBarco() && !esMismaCeldaDelBarco) {
-                return false; // would collide with another ship
+                return false; // Would collide with another ship
             }
         }
         return true;
