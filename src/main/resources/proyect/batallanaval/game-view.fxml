@@ -8,16 +8,27 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="650.0" prefWidth="1000.0" styleClass="bg-home" stylesheets="@styles/styles.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="proyect.batallanaval.controllers.GameController"> <top>
-    <HBox alignment="CENTER">
-        <children>
-            <Label styleClass="title" text="¡FASE DE ATAQUE!" />
-        </children>
-        <padding>
-            <Insets bottom="15" top="15" />
-        </padding>
-    </HBox>
-</top>
+<BorderPane prefHeight="650.0" prefWidth="1000.0" styleClass="bg-home" stylesheets="@styles/styles.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="proyect.batallanaval.controllers.GameController">
+
+    <top>
+        <VBox alignment="CENTER">
+            <children>
+                <HBox alignment="CENTER">
+                    <children>
+                        <Label styleClass="title" text="¡FASE DE ATAQUE!" />
+                    </children>
+                    <padding>
+                        <Insets bottom="5" top="15" />
+                    </padding>
+                </HBox>
+
+                <Label fx:id="lblMensajeTurno" styleClass="label-message" text="Esperando inicio de turno..." />
+            </children>
+            <padding>
+                <Insets bottom="10" />
+            </padding>
+        </VBox>
+    </top>
 
     <center>
         <HBox alignment="TOP_CENTER" spacing="50" BorderPane.alignment="CENTER">
@@ -38,8 +49,8 @@
 
     <bottom>
         <HBox alignment="CENTER" style="-fx-spacing: 20;">
+            <Button fx:id="btnCheck" mnemonicParsing="false" text="REVISION" />
             <Button fx:id="btnAtacar" text="ATACAR" />
-         <Button fx:id="btnCheck" mnemonicParsing="false" text="REVISION" />
             <padding>
                 <Insets bottom="20" top="20" />
             </padding>
