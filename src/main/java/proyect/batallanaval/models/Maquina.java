@@ -29,6 +29,23 @@ public class Maquina {
         this.flota = new Flota();
     }
 
+    public Maquina(String nickname, Tablero tablero, Flota flota) {
+        if (nickname == null || nickname.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El nickname de la máquina no puede ser nulo ni vacío."
+            );
+        }
+        if (tablero == null || flota == null) {
+            throw new IllegalArgumentException(
+                    "El tablero y la flota no pueden ser nulos."
+            );
+        }
+
+        this.nickname = nickname;
+        this.tableroPosicion = tablero;
+        this.flota = flota;
+    }
+
     public Tablero getTableroPosicion() { return tableroPosicion; }
     public Flota getFlota() { return flota; }
 }

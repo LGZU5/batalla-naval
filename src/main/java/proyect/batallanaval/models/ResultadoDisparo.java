@@ -1,6 +1,8 @@
 package proyect.batallanaval.models;
 
-public enum ResultadoDisparo {
+import java.io.Serializable;
+
+public enum ResultadoDisparo implements Serializable {
     AGUA,
     TOCADO,
     HUNDIDO

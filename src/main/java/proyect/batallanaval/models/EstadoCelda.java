@@ -1,6 +1,8 @@
 package proyect.batallanaval.models;
 
-public enum EstadoCelda {
+import java.io.Serializable;
+
+public enum EstadoCelda implements Serializable {
     VACIA,
     BARCO,
     TOCADA,
